@@ -3,7 +3,7 @@ import { Game } from './state.js';
 import { sendRequest } from './api.js';
 import { log } from './utils.js';
 import { renderCity, renderMap, switchView, createGhost, updateGhost, removeGhost } from './render.js';
-import { ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from './config.js';
+import { ZOOM_MIN, ZOOM_MAX, ZOOM_STEP, CITY_BOUNDARY } from './config.js';
 import { RenderEngine } from './render_engine.js';
 
 // 设置右键菜单
@@ -150,6 +150,20 @@ export function initInteractionListeners() {
         // 2. 处理物体拖拽
         if (Game.dragState.isDragging && Game.dragState.id) {
             e.preventDefault();
+            
+            // UI 保护区检测 (防止拖拽到 UI 之下)
+            const h = window.innerHeight;
+            const w = window.innerWidth;
+            
+            // 顶部栏 (约 60px)
+            if (e.clientY < 60) return;
+            
+            // 左下角日志面板 (320x220)
+            if (e.clientY > h - 220 && e.clientX < 320) return;
+            
+            // 右下角城池图标 (80x80)
+            if (e.clientY > h - 80 && e.clientX > w - 80) return;
+
             const id = Game.dragState.id;
             const newX = worldPos.x - Game.dragState.offsetX;
             const newY = worldPos.y - Game.dragState.offsetY;
@@ -214,6 +228,12 @@ export function initInteractionListeners() {
         if (Game.placementState.active) {
             const { x, y, region, def } = Game.placementState;
             
+            // Check Boundary
+            if (x < CITY_BOUNDARY.minX || x > CITY_BOUNDARY.maxX || y < CITY_BOUNDARY.minY || y > CITY_BOUNDARY.maxY) {
+                log("Cannot place building outside city boundary!");
+                return;
+            }
+
             log(`Building ${def.name} at (${x}, ${y})`);
             
             sendRequest('build', {
@@ -312,6 +332,21 @@ export function initInteractionListeners() {
                 const finalX = Math.floor(obj.position.x);
                 const finalY = Math.floor(obj.position.z);
                 
+                // Check Boundary
+                if (Game.currentView === 'city') {
+                     if (finalX < CITY_BOUNDARY.minX || finalX > CITY_BOUNDARY.maxX || finalY < CITY_BOUNDARY.minY || finalY > CITY_BOUNDARY.maxY) {
+                          log("Cannot move outside city boundary!");
+                          if (Game.currentView === 'city') renderCity();
+                          else renderMap();
+                          
+                          Game.dragState.isDragging = false;
+                          Game.dragState.id = null;
+                          Game.dragState.type = null;
+                          RenderEngine.setGridVisibility(false);
+                          return;
+                     }
+                }
+                
                 log(`Moved ${type} ${id} to (${finalX}, ${finalY})`);
 
                 if (type === 'general') {
@@ -354,6 +389,19 @@ export function initInteractionListeners() {
 
     container.addEventListener('mouseup', endInteraction);
     container.addEventListener('mouseleave', endInteraction);
+
+    // 鼠标双击空地，打印坐标
+    container.addEventListener('dblclick', (e) => {
+        const intersects = RenderEngine.getIntersections(e.clientX, e.clientY);
+        const target = intersects.find(hit => hit.object.userData && (hit.object.userData.type === 'building' || hit.object.userData.type === 'general'));
+        
+        if (!target) {
+            const worldPos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
+            const x = Math.floor(worldPos.x);
+            const y = Math.floor(worldPos.y);
+            log(`Double click at: ${x}, ${y}`);
+        }
+    });
 }
 
 // 注入样式

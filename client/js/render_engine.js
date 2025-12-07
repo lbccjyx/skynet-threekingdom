@@ -1,4 +1,4 @@
-import { TILE_SIZE, CAMERA_CONFIG, LIGHT_CONFIG, GRID_CONFIG } from './config.js';
+import { TILE_SIZE, CAMERA_CONFIG, LIGHT_CONFIG, GRID_CONFIG, CITY_BOUNDARY } from './config.js';
 
 export const RenderEngine = {
     scene: null,
@@ -60,7 +60,7 @@ export const RenderEngine = {
 
         // Grid Helper
         if (GRID_CONFIG.visible) {
-            this.gridHelper = new THREE.GridHelper(GRID_CONFIG.size, GRID_CONFIG.divisions);
+            this.gridHelper = this.createCustomGrid();
             this.scene.add(this.gridHelper);
         }
 
@@ -99,31 +99,12 @@ export const RenderEngine = {
     animate: function() {
         requestAnimationFrame(() => this.animate());
         
-        // Infinite Grid Logic
+        // Infinite Grid Logic - Disabled for fixed boundary grid
+        /*
         if (this.gridHelper && this.camera && this.renderer) {
-            // Re-use getWorldPosition logic but for center of screen (0,0 NDC)
-            // Or just create a raycaster here
-            
-            const raycaster = new THREE.Raycaster();
-            // Normalized Device Coords for center is (0,0)
-            raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
-            
-            const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-            const target = new THREE.Vector3();
-            
-            raycaster.ray.intersectPlane(plane, target);
-            
-            if (target) {
-                const cellSize = GRID_CONFIG.size / GRID_CONFIG.divisions;
-                
-                // Snap to nearest cell multiple
-                const snapX = Math.floor(target.x / cellSize) * cellSize;
-                const snapZ = Math.floor(target.z / cellSize) * cellSize;
-                
-                this.gridHelper.position.x = snapX;
-                this.gridHelper.position.z = snapZ;
-            }
+             // ... Logic removed to keep grid fixed to world coordinates for boundary visualization ...
         }
+        */
 
         this.renderer.render(this.scene, this.camera);
     },
@@ -312,10 +293,79 @@ export const RenderEngine = {
         this.camera.translateY(moveY);
     },
 
+    // 创建自定义网格 (红色表示越界)
+    createCustomGrid: function() {
+        const group = new THREE.Group();
+        
+        const size = GRID_CONFIG.size;
+        const step = TILE_SIZE;
+        const halfSize = size / 2;
+        
+        const colorInside = 0x888888; // Grey
+        const colorOutside = 0xff0000; // Red
+        
+        const matInside = new THREE.LineBasicMaterial({ color: colorInside });
+        const matOutside = new THREE.LineBasicMaterial({ color: colorOutside });
+        
+        // Helper to add line
+        const addLine = (x1, y1, z1, x2, y2, z2, isOutside) => {
+            const points = [];
+            points.push(new THREE.Vector3(x1, y1, z1));
+            points.push(new THREE.Vector3(x2, y2, z2));
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const line = new THREE.Line(geometry, isOutside ? matOutside : matInside);
+            group.add(line);
+        };
+
+        const { minX, maxX, minY, maxY } = CITY_BOUNDARY;
+
+        // Vertical lines (along Z)
+        for (let x = -halfSize; x <= halfSize; x += step) {
+             // If x is outside boundary X range, whole line is red
+             if (x < minX || x > maxX) {
+                 addLine(x, 0, -halfSize, x, 0, halfSize, true);
+             } else {
+                 // Split into 3 segments
+                 // 1. -halfSize to minY (Red)
+                 if (-halfSize < minY) {
+                     addLine(x, 0, -halfSize, x, 0, minY, true);
+                 }
+                 // 2. minY to maxY (Grey/Inside)
+                 addLine(x, 0, minY, x, 0, maxY, false);
+                 // 3. maxY to halfSize (Red)
+                 if (maxY < halfSize) {
+                     addLine(x, 0, maxY, x, 0, halfSize, true);
+                 }
+             }
+        }
+
+        // Horizontal lines (along X)
+        for (let z = -halfSize; z <= halfSize; z += step) {
+            // If z is outside boundary Y range, whole line is red
+            if (z < minY || z > maxY) {
+                addLine(-halfSize, 0, z, halfSize, 0, z, true);
+            } else {
+                // Split into 3 segments
+                // 1. -halfSize to minX (Red)
+                if (-halfSize < minX) {
+                     addLine(-halfSize, 0, z, minX, 0, z, true);
+                }
+                // 2. minX to maxX (Grey)
+                addLine(minX, 0, z, maxX, 0, z, false);
+                // 3. maxX to halfSize (Red)
+                if (maxX < halfSize) {
+                    addLine(maxX, 0, z, halfSize, 0, z, true);
+                }
+            }
+        }
+        
+        return group;
+    },
+
     // 虚线网格设置为是否可见 拖拽和建筑的时候可见。
     setGridVisibility: function(visible) {
         if (!this.gridHelper) {
-             this.gridHelper = new THREE.GridHelper(GRID_CONFIG.size, GRID_CONFIG.divisions);
+             this.gridHelper = this.createCustomGrid();
              this.scene.add(this.gridHelper);
         }
         this.gridHelper.visible = visible;

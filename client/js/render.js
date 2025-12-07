@@ -54,7 +54,7 @@ export function renderCity() {
     RenderEngine.clearWorld();
     
     const bgMesh = RenderEngine.createEntity('city_bg', 'assets/chengqiang.png', TILE_SIZE*40, TILE_SIZE*50, 0, 0);
-    bgMesh.position.set(0, -5, 0); // Put it below everything
+    bgMesh.position.set(0, -50, 0); // Put it well below everything to avoid interference
     bgMesh.quaternion.set(0, 0, 0, 1); 
     bgMesh.rotation.set(-Math.PI / 2, 0, Math.PI / 4);
     

@@ -10,9 +10,9 @@ export const CAMERA_CONFIG = {
     // Position of the camera. 
     // For Isometric view, usually equal X, Y, Z offsets.
     // Increase distance to cover more area if needed.
-    posX: 100, 
-    posY: 100,
-    posZ: 100,
+    posX: 1000, 
+    posY: 1000,
+    posZ: 1000,
     
     // LookAt Target (usually origin or map center)
     lookAtX: 0,
@@ -21,8 +21,9 @@ export const CAMERA_CONFIG = {
     
     // Near and Far clipping planes
     // Use large negative near plane for Isometric view to avoid clipping objects "behind" camera plane but visible in frustum
-    near: -10000,
-    far: 20000 
+    // Adjusted range to avoid potential precision issues
+    near: -5000,
+    far: 10000 
 };
 
 // Light Settings
@@ -44,4 +45,13 @@ export const GRID_CONFIG = {
     size: GRID_SIZE, 
     divisions: GRID_SIZE / TILE_SIZE, // Ensures cell size equals TILE_SIZE
     visible: false
+};
+
+// City Boundary (Placement Area)
+// Multiples of TILE_SIZE (30)
+export const CITY_BOUNDARY = {
+    minX: -330,
+    maxX: 420,
+    minY: -300,
+    maxY: 450
 };
