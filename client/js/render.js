@@ -96,6 +96,12 @@ function renderBuilding(b) {
     // Use defined image or fallback
     const image = def.image || 'assets/guanfu.png';
     
+    // Position center calculation (if needed, but RenderEngine handles plane center)
+    // Game data b.x, b.y is likely center or top-left?
+    // In DOM version: left = b.x - width/2. implies b.x is CENTER.
+    // In RenderEngine: mesh.position.set(x, ...) puts center at x.
+    // So we just pass b.x, b.y directly.
+    
     const mesh = RenderEngine.createEntity('build_' + b.id, image, width, height, b.x, b.y);
     mesh.userData.type = 'building';
     mesh.userData.data = b;

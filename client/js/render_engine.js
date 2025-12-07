@@ -1,4 +1,4 @@
-import { TILE_SIZE } from './config.js';
+import { TILE_SIZE, CAMERA_CONFIG, LIGHT_CONFIG, GRID_CONFIG } from './config.js';
 
 export const RenderEngine = {
     scene: null,
@@ -8,11 +8,21 @@ export const RenderEngine = {
     textures: {},
     objects: {}, // Map of ID -> Three.js Object
     worldGroup: null, // Group for all game entities
+    gridHelper: null, // Reference to grid
     
+    // Pan State
+    panState: {
+        isPanning: false,
+        lastX: 0,
+        lastY: 0
+    },
+
     init: function() {
         this.container = document.getElementById('three-container');
-        const width = this.container.clientWidth;
-        const height = this.container.clientHeight;
+        
+        // Initial size might be 0 if hidden, handled by ResizeObserver
+        const width = this.container.clientWidth || window.innerWidth;
+        const height = this.container.clientHeight || window.innerHeight;
 
         // Scene
         this.scene = new THREE.Scene();
@@ -21,13 +31,16 @@ export const RenderEngine = {
         this.worldGroup = new THREE.Group();
         this.scene.add(this.worldGroup);
 
-        // Camera - Orthographic for 2.5D look
+        // Camera - Isometric View
         this.camera = new THREE.OrthographicCamera(
             width / -2, width / 2,
             height / 2, height / -2,
-            1, 1000
+            CAMERA_CONFIG.near, CAMERA_CONFIG.far
         );
-        this.camera.position.set(0, 0, 100);
+        
+        // Position camera based on config
+        this.camera.position.set(CAMERA_CONFIG.posX, CAMERA_CONFIG.posY, CAMERA_CONFIG.posZ); 
+        this.camera.lookAt(CAMERA_CONFIG.lookAtX, CAMERA_CONFIG.lookAtY, CAMERA_CONFIG.lookAtZ);
         this.camera.zoom = 1.0;
         this.camera.updateProjectionMatrix();
 
@@ -37,20 +50,30 @@ export const RenderEngine = {
         this.container.appendChild(this.renderer.domElement);
 
         // Lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        const ambientLight = new THREE.AmbientLight(LIGHT_CONFIG.ambientColor, LIGHT_CONFIG.ambientIntensity);
         this.scene.add(ambientLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
-        dirLight.position.set(10, 20, 10);
+        const dirLight = new THREE.DirectionalLight(LIGHT_CONFIG.dirLightColor, LIGHT_CONFIG.dirLightIntensity);
+        dirLight.position.set(LIGHT_CONFIG.dirLightPos.x, LIGHT_CONFIG.dirLightPos.y, LIGHT_CONFIG.dirLightPos.z);
+        dirLight.castShadow = true;
         this.scene.add(dirLight);
 
-        // Grid Helper (Visual Reference)
-        const gridHelper = new THREE.GridHelper(2000, 60);
-        gridHelper.rotation.x = Math.PI / 2; // Rotate to vertical plane (X-Y)
-        this.scene.add(gridHelper);
+        // Grid Helper
+        if (GRID_CONFIG.visible) {
+            this.gridHelper = new THREE.GridHelper(GRID_CONFIG.size, GRID_CONFIG.divisions);
+            this.scene.add(this.gridHelper);
+        }
 
-        // Resize Listener
+        // Resize Listener (Window)
         window.addEventListener('resize', () => this.onWindowResize(), false);
+
+        // ResizeObserver (Container Visibility Change)
+        if (window.ResizeObserver) {
+            const resizeObserver = new ResizeObserver(() => {
+                this.onWindowResize();
+            });
+            resizeObserver.observe(this.container);
+        }
 
         // Start Loop
         this.animate();
@@ -60,6 +83,8 @@ export const RenderEngine = {
         if (!this.container) return;
         const width = this.container.clientWidth;
         const height = this.container.clientHeight;
+        
+        if (width === 0 || height === 0) return;
 
         this.camera.left = width / -2;
         this.camera.right = width / 2;
@@ -72,6 +97,33 @@ export const RenderEngine = {
 
     animate: function() {
         requestAnimationFrame(() => this.animate());
+        
+        // Infinite Grid Logic
+        if (this.gridHelper && this.camera && this.renderer) {
+            // Re-use getWorldPosition logic but for center of screen (0,0 NDC)
+            // Or just create a raycaster here
+            
+            const raycaster = new THREE.Raycaster();
+            // Normalized Device Coords for center is (0,0)
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
+            
+            const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+            const target = new THREE.Vector3();
+            
+            raycaster.ray.intersectPlane(plane, target);
+            
+            if (target) {
+                const cellSize = GRID_CONFIG.size / GRID_CONFIG.divisions;
+                
+                // Snap to nearest cell multiple
+                const snapX = Math.floor(target.x / cellSize) * cellSize;
+                const snapZ = Math.floor(target.z / cellSize) * cellSize;
+                
+                this.gridHelper.position.x = snapX;
+                this.gridHelper.position.z = snapZ;
+            }
+        }
+
         this.renderer.render(this.scene, this.camera);
     },
 
@@ -93,6 +145,7 @@ export const RenderEngine = {
         }
     },
     
+    // Create or Update Entity
     createEntity: function(id, image, width, height, x, y) {
         if (this.objects[id]) {
             this.updateEntityPosition(id, x, y);
@@ -100,12 +153,20 @@ export const RenderEngine = {
         }
 
         const texture = this.loadTexture(image);
-        const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+        
+        const material = new THREE.MeshLambertMaterial({ 
+            map: texture, 
+            transparent: true,
+            side: THREE.DoubleSide,
+            alphaTest: 0.1 
+        });
+        
         const geometry = new THREE.PlaneGeometry(width, height);
         const mesh = new THREE.Mesh(geometry, material);
         
-        mesh.position.set(x, -y, 0); 
-        
+        mesh.position.set(x, height / 2, y); 
+        mesh.quaternion.copy(this.camera.quaternion);
+
         mesh.userData = { id: id };
         this.worldGroup.add(mesh);
         this.objects[id] = mesh;
@@ -115,19 +176,32 @@ export const RenderEngine = {
     updateEntityPosition: function(id, x, y) {
         const obj = this.objects[id];
         if (obj) {
-            obj.position.set(x, -y, 0);
+             const height = obj.geometry.parameters.height;
+             obj.position.set(x, height / 2, y);
         }
     },
     
-    // Update Building Progress Bar
+    setHighlight: function(id, highlight) {
+        const obj = this.objects[id];
+        if (!obj) return;
+        
+        if (highlight) {
+            if (obj.material.emissive) {
+                obj.material.emissive.setHex(0x555555); 
+            }
+        } else {
+            if (obj.material.emissive) {
+                obj.material.emissive.setHex(0x000000); 
+            }
+        }
+    },
+    
     updateProgress: function(id, percent) {
-        // ID passed here is building ID (e.g. 123), object ID is "build_123"
         const obj = this.objects['build_' + id];
         if (!obj) return;
         
         let bar = obj.getObjectByName('progressBar');
         if (!bar && percent < 100) {
-            // Create bar
             const width = 40;
             const height = 6;
             
@@ -136,13 +210,11 @@ export const RenderEngine = {
             const barBg = new THREE.Mesh(barBgGeo, barBgMat);
             
             const barFillGeo = new THREE.PlaneGeometry(width, height);
-            // Translate to pivot from left
             barFillGeo.translate(width / 2, 0, 0);
             
             const barFillMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
             const barFill = new THREE.Mesh(barFillGeo, barFillMat);
             barFill.name = 'fill';
-            // Initial position: left edge at -width/2 of container
             barFill.position.set(-width / 2, 0, 1);
             
             bar = new THREE.Group();
@@ -150,10 +222,6 @@ export const RenderEngine = {
             bar.add(barBg);
             bar.add(barFill);
             
-            // Position bar above building
-            // obj height isn't stored explicitly but geometry params are lost
-            // Assuming standard tile size or userData?
-            // Just offset by some amount (e.g. 30px up)
             bar.position.set(0, 30, 10); 
             
             obj.add(bar);
@@ -181,7 +249,7 @@ export const RenderEngine = {
         const raycaster = new THREE.Raycaster();
         raycaster.setFromCamera(mouse, this.camera);
 
-        return raycaster.intersectObjects(this.worldGroup.children, true); // Recursive true to hit bars? No, bars are children. Yes true.
+        return raycaster.intersectObjects(this.worldGroup.children, true);
     },
     
     getWorldPosition: function(clientX, clientY) {
@@ -193,11 +261,32 @@ export const RenderEngine = {
         const raycaster = new THREE.Raycaster();
         raycaster.setFromCamera(mouse, this.camera);
         
-        if (raycaster.ray.direction.z === 0) return { x: 0, y: 0 };
+        const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        const target = new THREE.Vector3();
         
-        const t = -raycaster.ray.origin.z / raycaster.ray.direction.z;
-        const vec = new THREE.Vector3().copy(raycaster.ray.origin).add(raycaster.ray.direction.multiplyScalar(t));
+        raycaster.ray.intersectPlane(plane, target);
         
-        return { x: vec.x, y: -vec.y };
+        if (!target) return { x: 0, y: 0 };
+        return { x: target.x, y: target.z };
+    },
+
+    // Camera Panning
+    panCamera: function(deltaX, deltaY) {
+        const zoom = this.camera.zoom;
+        const panSpeed = 1.0 / zoom; 
+        
+        const worldWidth = this.camera.right - this.camera.left;
+        const screenWidth = this.container.clientWidth;
+        const ratioX = worldWidth / screenWidth;
+        
+        const worldHeight = this.camera.top - this.camera.bottom;
+        const screenHeight = this.container.clientHeight;
+        const ratioY = worldHeight / screenHeight;
+
+        const moveX = -deltaX * ratioX;
+        const moveY = deltaY * ratioY; 
+        
+        this.camera.translateX(moveX);
+        this.camera.translateY(moveY);
     }
 };

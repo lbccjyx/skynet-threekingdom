@@ -13,21 +13,18 @@ export function setupContextMenus() {
     container.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         
-        // Only allow context menu if no active drag
-        if (Game.dragState.isDragging) return;
+        // Only allow context menu if no active drag and no active pan
+        if (Game.dragState.isDragging || RenderEngine.panState.isPanning) return;
 
         const pos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
         const buildX = Math.floor(pos.x);
         const buildY = Math.floor(pos.y);
         
-        // Determine region based on current view
         const region = Game.currentView === 'city' ? 1 : 2;
 
-        // Remove existing menu
         const existing = document.querySelector('.context-menu');
         if (existing) existing.remove();
         
-        // Create Menu
         const menu = document.createElement('div');
         menu.className = 'context-menu';
         menu.style.left = e.clientX + 'px';
@@ -78,7 +75,6 @@ export function setupContextMenus() {
         }
         
         document.body.appendChild(menu);
-        
         setTimeout(() => document.addEventListener('click', closeMenu), 100);
     });
 }
@@ -87,7 +83,6 @@ export function initListeners() {
     if (UI.btn.toMap) {
         UI.btn.toMap.addEventListener('click', () => switchView('map'));
     }
-    // btn-to-city might be the mini icon or the one in map view
     const toCityBtn = document.getElementById('btn-to-city'); 
     if (toCityBtn) {
         toCityBtn.addEventListener('click', () => switchView('city'));
@@ -105,6 +100,9 @@ export function initInteractionListeners() {
     
     // Zoom (Mouse Wheel)
     container.addEventListener('wheel', (e) => {
+        // If Middle Mouse Button is held, this might be a pan attempt on some mouses, 
+        // but typically wheel is just scroll.
+        // Standard wheel zoom
         e.preventDefault();
         const direction = e.deltaY > 0 ? -1 : 1;
         let newZoom = RenderEngine.camera.zoom + (direction * 0.1);
@@ -114,61 +112,80 @@ export function initInteractionListeners() {
         RenderEngine.camera.zoom = newZoom;
         RenderEngine.camera.updateProjectionMatrix();
         
-        Game.zoom = newZoom; // Sync state
+        Game.zoom = newZoom;
     });
 
-    // Mouse Move (Hover & Drag)
+    // Mouse Move (Hover, Drag, Pan)
     container.addEventListener('mousemove', (e) => {
-        const worldPos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
-        
-        // 1. Handle Dragging
-        if (Game.dragState.isDragging && Game.dragState.id) {
+        // 1. Handle Camera Panning
+        if (RenderEngine.panState.isPanning) {
             e.preventDefault();
+            const deltaX = e.clientX - RenderEngine.panState.lastX;
+            const deltaY = e.clientY - RenderEngine.panState.lastY;
             
-            // Move object
-            const id = Game.dragState.id;
+            RenderEngine.panCamera(deltaX, deltaY);
             
-            // New Position = World Mouse Pos - Offset
-            const newX = worldPos.x - Game.dragState.offsetX;
-            const newY = worldPos.y - Game.dragState.offsetY;
-            
-            // Update visually
-            RenderEngine.updateEntityPosition(id, newX, newY);
-            
+            RenderEngine.panState.lastX = e.clientX;
+            RenderEngine.panState.lastY = e.clientY;
             return;
         }
 
-        // 2. Handle Hover (Highlight)
-        // Check intersections
+        const worldPos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
+        
+        // 2. Handle Object Dragging
+        if (Game.dragState.isDragging && Game.dragState.id) {
+            e.preventDefault();
+            const id = Game.dragState.id;
+            const newX = worldPos.x - Game.dragState.offsetX;
+            const newY = worldPos.y - Game.dragState.offsetY;
+            RenderEngine.updateEntityPosition(id, newX, newY);
+            return;
+        }
+
+        // 3. Handle Hover (Highlight)
         const intersects = RenderEngine.getIntersections(e.clientX, e.clientY);
         if (intersects.length > 0) {
-            // Find first building or general
             const target = intersects.find(hit => hit.object.userData && (hit.object.userData.type === 'building' || hit.object.userData.type === 'general'));
             
             if (target) {
-                const id = target.object.userData.id; // "build_123" or "gen_456"
+                const id = target.object.userData.id;
                 if (Game.hoveredBuildingId !== id) {
-                    // TODO: Visual Highlight in Three.js (e.g. emission or color tint)
-                    // For now, change cursor
+                    if (Game.hoveredBuildingId) {
+                         RenderEngine.setHighlight(Game.hoveredBuildingId, false);
+                    }
+                    RenderEngine.setHighlight(id, true);
                     container.style.cursor = 'pointer';
                     Game.hoveredBuildingId = id;
                 }
             } else {
                  if (Game.hoveredBuildingId !== null) {
+                    RenderEngine.setHighlight(Game.hoveredBuildingId, false);
                     container.style.cursor = 'default';
                     Game.hoveredBuildingId = null;
                 }
             }
         } else {
              if (Game.hoveredBuildingId !== null) {
+                RenderEngine.setHighlight(Game.hoveredBuildingId, false);
                 container.style.cursor = 'default';
                 Game.hoveredBuildingId = null;
             }
         }
     });
 
-    // Mouse Down (Start Drag)
+    // Mouse Down (Start Drag / Pan)
     container.addEventListener('mousedown', (e) => {
+        // Middle Button (1) -> Start Pan
+        if (e.button === 1) {
+            e.preventDefault();
+            RenderEngine.panState.isPanning = true;
+            RenderEngine.panState.lastX = e.clientX;
+            RenderEngine.panState.lastY = e.clientY;
+            container.style.cursor = 'move';
+            return;
+        }
+        
+        // Left Button (0) -> Start Drag / Interact
         if (e.button !== 0) return;
 
         const intersects = RenderEngine.getIntersections(e.clientX, e.clientY);
@@ -179,29 +196,16 @@ export function initInteractionListeners() {
             const id = obj.userData.id;
             const worldPos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
             
-            // Start Drag immediately or timer? Original had timer.
-            // Let's implement immediate drag for generals, timer for buildings? 
-            // Original: Buildings had timer. Generals had click.
-            // Let's unify or stick to timer for buildings to distinguish from click (info).
-            
             const isGeneral = obj.userData.type === 'general';
             
             if (isGeneral) {
-                 // Generals drag immediately in old code? No, old code: Click -> Random Move.
-                 // "Simple Drag & Drop (Mock)" in render.js was actually just onclick -> move random.
-                 // Wait, render.js line 86: el.onclick... move to random.
-                 // OK, let's implement actual drag for generals now since we are in 3D.
-                 
                  Game.dragState.isDragging = true;
-                 Game.dragState.id = id; // "gen_xxx"
+                 Game.dragState.id = id;
                  Game.dragState.type = 'general';
                  Game.dragState.data = obj.userData.data;
                  
-                 // Offset
-                 // Object Pos (Game Coords)
-                 // obj.position.x is GameX. obj.position.y is -GameY.
                  const objGameX = obj.position.x;
-                 const objGameY = -obj.position.y;
+                 const objGameY = obj.position.z;
                  
                  Game.dragState.offsetX = worldPos.x - objGameX;
                  Game.dragState.offsetY = worldPos.y - objGameY;
@@ -209,14 +213,13 @@ export function initInteractionListeners() {
                  log(`Started dragging general ${id}`);
                  
             } else {
-                // Building Long Press
                  Game.dragState.timer = setTimeout(() => {
                     Game.dragState.isDragging = true;
                     Game.dragState.id = id;
                     Game.dragState.type = 'building';
                     
                     const objGameX = obj.position.x;
-                    const objGameY = -obj.position.y;
+                    const objGameY = obj.position.z;
                     
                     Game.dragState.offsetX = worldPos.x - objGameX;
                     Game.dragState.offsetY = worldPos.y - objGameY;
@@ -228,8 +231,14 @@ export function initInteractionListeners() {
         }
     });
 
-    // Mouse Up (End Drag)
+    // Mouse Up (End Drag / Pan)
     const endInteraction = (e) => {
+        // End Pan
+        if (RenderEngine.panState.isPanning) {
+            RenderEngine.panState.isPanning = false;
+            container.style.cursor = 'default';
+        }
+
         if (Game.dragState.timer) {
             clearTimeout(Game.dragState.timer);
             Game.dragState.timer = null;
@@ -242,26 +251,22 @@ export function initInteractionListeners() {
             
             if (obj) {
                 const finalX = Math.floor(obj.position.x);
-                const finalY = Math.floor(-obj.position.y);
+                const finalY = Math.floor(obj.position.z);
                 
                 log(`Moved ${type} ${id} to (${finalX}, ${finalY})`);
 
                 if (type === 'general') {
-                     // Move General
                      const generalId = obj.userData.data.id;
                      sendRequest('move_general', { id: generalId, x: finalX, y: finalY }, (res) => {
                         if (res.ok) {
-                            // Update data
                             const g = Game.data.generals.find(g => g.id === generalId);
                             if (g) { g.x = res.x; g.y = res.y; }
                             renderMap();
                         } else {
-                            renderMap(); // Revert
+                            renderMap();
                         }
                     });
                 } else {
-                    // Move Building
-                    // ID format "build_123" -> 123
                     const buildId = parseInt(id.replace('build_', ''));
                      sendRequest('build_move', {
                         id: buildId,

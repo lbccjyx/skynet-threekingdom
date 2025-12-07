@@ -15,5 +15,5 @@ const BUILDING_DEFINITIONS = {
     6: {key: 6, name: '兵营',image: 'assets/buildding/barracks.png',  width: 2, height: 2, build_sec: 10, destroy_sec: 10, cost_item: 1, cost_num: 10, cost_item2: 2, cost_num2: 10, cost_item3: 3, cost_num3: 10 },
     7: {key: 7, name: '马厩', image: 'assets/buildding/horsebarn.png', width: 2, height: 2, build_sec: 10, destroy_sec: 10, cost_item: 1, cost_num: 10, cost_item2: 2, cost_num2: 10, cost_item3: 3, cost_num3: 10 },
     8: {key: 8, name: 'wall',width: 2, height: 2, build_sec: 10, destroy_sec: 10, cost_item: 1, cost_num: 10, cost_item2: 2, cost_num2: 10, cost_item3: 3, cost_num3: 10 },
-    9: {key: 9, name: '官府', image: 'assets/guanfu.png', width: 4, height: 4, build_sec: 10, destroy_sec: 10, cost_item: 1, cost_num: 10, cost_item2: 2, cost_num2: 10, cost_item3: 3, cost_num3: 10 }
+    9: {key: 9, name: '官府', image: 'assets/guanfu.png', width: 7, height: 4, build_sec: 10, destroy_sec: 10, cost_item: 1, cost_num: 10, cost_item2: 2, cost_num2: 10, cost_item3: 3, cost_num3: 10 }
 };
