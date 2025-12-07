@@ -1,0 +1,320 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f0f0f0;
+    overflow: hidden;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Login Screen */
+#login-screen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #2c3e50;
+    background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('../assets/background.png'); /* Fallback needed */
+    background-size: cover;
+}
+
+.login-box {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    width: 300px;
+    text-align: center;
+}
+
+.form-group {
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #666;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+button {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 100%;
+    font-size: 16px;
+}
+
+button:hover {
+    background-color: #c0392b;
+}
+
+/* Game Screen */
+#game-screen {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.top-bar {
+    background-color: #34495e;
+    color: white;
+    padding: 10px 20px;
+    display: flex;
+    gap: 20px;
+}
+
+.resource {
+    font-weight: bold;
+}
+
+.main-area {
+    flex: 1;
+    display: flex;
+    padding: 20px;
+    gap: 20px;
+    background-color: #ecf0f1;
+}
+
+.city-view, .map-view {
+    flex: 1;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+}
+
+.buildings-grid, .map-grid {
+    flex: 1;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Grid visualization */
+.buildings-grid {
+    position: relative;
+    /* Remove grid flow to allow absolute positioning like map */
+    /* display: grid; */
+    /* grid-template-columns: repeat(4, 1fr); */
+    /* 
+    background-image: url('../assets/background.png'); Optional if file exists 
+    background-size: cover;*/
+    
+    width: 100%; /* 或固定值如 800px */
+    max-width: 1200px; /* 最大宽度限制 */
+    min-width: 300px; /* 最小宽度限制 */
+    
+    height: 500px; /* 固定高度 */
+    max-height: 800px; /* 最大高度限制 */
+    min-height: 200px; /* 最小高度限制 */
+    
+    /* 可选：如果内容超出时显示滚动条 */
+    overflow: auto;
+    
+    /* Grid background effect similar to map for easier placement 
+    background-image: 
+        linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px);
+    background-size: 32px 32px; /* Match TILE_SIZE if possible */
+}
+/* 添加叠加层 - 第一层 (城墙) */
+.buildings-grid::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('../assets/chengqiang.png');
+    background-size: cover;
+    background-position: center;
+    pointer-events: none; /* 允许点击穿透到下层元素 */
+    
+    /* 控制透明度 */
+    opacity: 1;
+    
+    /* 混合模式（可选） */
+    mix-blend-mode: multiply;
+    
+    /* 确保在背景之上，内容之下 */
+    z-index: 0; /* 修改为正值，因为 -1 会被父元素背景遮挡，或者使用::after覆盖 */
+}
+
+
+
+/* 提高建筑卡片的层级，使其不被叠加层完全遮挡交互 */
+.building-card {
+    background: #bdc3c7;
+    border: 1px solid #95a5a6;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative; /* 启用z-index */
+    z-index: 2; /* 高于叠加层 */
+}
+
+.building-card:hover {
+    background: #95a5a6;
+    color: white;
+}
+
+/* Map */
+.map-grid {
+    background-color: #27ae60;
+    position: relative;
+    /* Grid pattern */
+    background-image: 
+        linear-gradient(#2ecc71 1px, transparent 1px),
+        linear-gradient(90deg, #2ecc71 1px, transparent 1px);
+    background-size: 50px 50px;
+}
+
+.general-unit {
+    width: 40px;
+    height: 40px;
+    background-color: #e74c3c;
+    border: 2px solid white;
+    border-radius: 50%;
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    user-select: none;
+    z-index: 10;
+}
+
+.general-unit.selected {
+    border-color: #f1c40f;
+    box-shadow: 0 0 10px #f1c40f;
+}
+
+.log-panel {
+    height: 150px;
+    background: #2c3e50;
+    color: #ecf0f1;
+    padding: 10px 20px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+.log-entry {
+    margin-bottom: 2px;
+    border-bottom: 1px solid #34495e;
+}
+
+/* New Styles */
+.view-controls {
+    margin-bottom: 10px;
+    text-align: right;
+}
+
+.mini-city-icon {
+    width: 60px;
+    height: 60px;
+    background-color: #3498db;
+    border: 3px solid #2980b9;
+    border-radius: 8px;
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    cursor: pointer;
+    z-index: 100;
+    background-image: url('../assets/guanfu.png'); /* Optional if file exists */
+    background-size: cover;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.mini-city-icon::after {
+    content: '城池';
+    position: absolute;
+    bottom: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #333;
+    font-weight: bold;
+    font-size: 12px;
+    white-space: nowrap;
+    background: rgba(255,255,255,0.7);
+    padding: 2px 5px;
+    border-radius: 4px;
+}
+
+.mini-city-icon:hover {
+    transform: scale(1.1);
+}
+
+/* Context Menu */
+.context-menu {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid #aaa;
+    padding: 5px;
+    z-index: 1000;
+    color: white;
+}
+.context-menu-item {
+    padding: 5px 10px;
+    cursor: pointer;
+}
+.context-menu-item:hover {
+    background: #555;
+}
+
+/* Building Entity */
+.building-entity {
+    position: absolute;
+    z-index: 10;
+    /* Removed debug background and border */
+    background: transparent;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 10px;
+    color: white;
+    flex-direction: column;
+    user-select: none;
+}
+
+/* Progress Bar */
+.progress-bar {
+    width: 80%;
+    height: 4px;
+    background: #333;
+    margin-top: 2px;
+}
+.progress-fill {
+    height: 100%;
+    background: #0f0;
+    width: 0%;
+}

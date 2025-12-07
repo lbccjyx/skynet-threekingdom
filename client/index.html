@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三国模拟经营</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="login-screen">
+        <div class="login-box">
+            <h1>三国模拟经营</h1>
+            <div class="form-group">
+                <label for="username">账号</label>
+                <input type="text" id="username" placeholder="请输入账号" value="test1206">
+            </div>
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" placeholder="请输入密码" value="123">
+            </div>
+            <button id="btn-login">登录 / 注册</button>
+            <p id="login-msg"></p>
+        </div>
+    </div>
+
+    <div id="game-screen" class="hidden">
+        <div class="top-bar">
+            <div class="resource">金币: <span id="res-gold">0</span></div>
+            <div class="resource">木材: <span id="res-wood">0</span></div>
+            <div class="resource">石料: <span id="res-stone">0</span></div>
+            <div class="resource">粮食: <span id="res-food">0</span></div>
+            <div class="resource">人口: <span id="res-pop">0</span></div>
+        </div>
+        
+        <div class="main-area">
+            <div class="city-view" id="city-view">
+                <h2 style="display:none">城池: <span id="city-name"></span> (Lv.<span id="city-level"></span>)</h2>
+                <div class="view-controls">
+                    <button id="btn-to-map">出城 (野外)</button>
+                </div>
+                <div class="buildings-grid" id="buildings-container">
+                    <!-- Buildings will be rendered here -->
+                </div>
+            </div>
+            
+            <div class="map-view hidden" id="map-view">
+                <h2>野外地图</h2>
+                <div class="view-controls">
+                    <button id="btn-back-to-city">回城</button>
+                </div>
+                <div class="map-grid" id="map-container">
+                    <!-- Map tiles and generals -->
+                    <div id="btn-to-city" class="mini-city-icon" title="回城"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="log-panel">
+            <h3>日志</h3>
+            <div id="log-content"></div>
+        </div>
+    </div>
+
+    <script src="js/sproto-parser.js"></script>
+    <script src="js/sproto.js"></script>
+    <script src="js/StaticData.js"></script>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,105 @@
+.package {
+    type 0 : integer
+    session 1 : integer
+}
+
+.User {
+    id 0 : integer
+    username 1 : string
+}
+
+.City {
+    id 0 : integer
+    name 1 : string
+    level 2 : integer
+}
+
+.Item {
+    id 0 : integer
+    amount 1 : integer
+}
+
+.General {
+    id 0 : integer
+    name 1 : string
+    x 2 : integer
+    y 3 : integer
+}
+
+.Building {
+    id 0 : integer
+    type 1 : integer
+    level 2 : integer
+    x 3 : integer
+    y 4 : integer
+    begin_build_time 5 : integer
+    region 6 : integer
+}
+
+# Client to Server
+login 1 {
+    request {
+        token 0 : string
+    }
+    response {
+        ok 0 : boolean
+        user 1 : User
+        city 2 : City
+        items 3 : *Item
+        generals 4 : *General
+        buildings 5 : *Building
+    }
+}
+
+move_general 2 {
+    request {
+        id 0 : integer
+        x 1 : integer
+        y 2 : integer
+    }
+    response {
+        ok 0 : boolean
+        id 1 : integer
+        x 2 : integer
+        y 3 : integer
+    }
+}
+
+heartbeat 3 {
+    request {}
+    response {
+        server_time 0 : integer
+    }
+}
+
+build 4 {
+    request {
+        type 0 : integer
+        x 1 : integer
+        y 2 : integer
+        region 3 : integer
+    }
+    response {
+        ok 0 : boolean
+        building 1 : Building
+    }
+}
+
+build_move 5 {
+    request {
+        id 0 : integer
+        new_x 1 : integer
+        new_y 2 : integer
+    }
+    response {
+        ok 0 : boolean
+        building 1 : Building
+    }
+}
+
+# Server to Client Pushes
+push_items 101 {
+    request {
+        items 0 : *Item
+    }
+}

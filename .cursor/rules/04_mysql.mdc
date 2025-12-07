@@ -1,0 +1,26 @@
+---
+alwaysApply: true
+description: 数据库说明,表结构设计
+---
+
+
+# 数据库
+
+## 表结构设计要求
+配置表用 s_ 开头
+玩家数据表用 d_ 开头
+
+## 字符集
+utf8mb4 
+
+## mysql的配置文件
+my-game/config
+
+## 当前已拥有的表结构
+my-game/schema.sql
+
+## 当前的静态表数据
+my-game/StaticData.sql
+
+## 客户端的对应表配置数据
+client/js/StaticData.js

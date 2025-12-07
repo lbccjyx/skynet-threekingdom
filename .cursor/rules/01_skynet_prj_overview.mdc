@@ -1,0 +1,33 @@
+---
+description: 简单介绍skynet的底层技术
+alwaysApply: false
+---
+
+# skynet底层技术概述
+## skynet说明网址：
+https://github.com/cloudwu/skynet/wiki
+https://github.com/cloudwu/skynet/wiki/GettingStarted
+
+## 简单介绍
+examples 和 test 目录下有些例子。如果你想自己动手做二次开发，你可以从理解 Bootstrap 开始，一开始不要尝试集群 Cluster 。
+你需要理解 Actor 模式的工作方式，把你的业务拆分成多个服务来协同工作。
+或许你还需要为 C/S 通讯制订一套通讯协议，skynet 并没有规定这个协议，可以自由选择。当然你也可以看看 Sproto 。
+
+## skynet目录结构
+3rd目录：提供lua语言支持、 jemalloc（内存管理模块）、md5加密等，这些模块在开发领域有着广泛的应用。
+skynet-src目录：包含skynet最核心机制的模块，包括逻辑入口、加载C服务代码的skynet_module模块、运行和管理服务实例的skynet_context模块、skynet消息队列、定时器和socket模块等。
+service-src目录：这是依附于skynet核心模块的c服务，如用于日志输出的logger服务，用于运行lua脚本snlua的c服务等。
+lualib-src目录：提供C层级的api调用，如调用socket模块的api，调用skynet消息发送，注册回调函数的api，甚至是对C服务的调用等，并导出lua接口，供lua层使用。可以视为lua调C的媒介
+service目录：lua层服务，依附于snlua这个c服务，这个目录包含skynet lua层级的一些基本服务，比如启动lua层级服务的bootstrap服务，gate服务，供lua层创建新服务的launcher服务等。
+lualib目录：包含调用lua服务的辅助函数，方便应用层调用skynet的一些基本服务；包含对一些c模块或lua模块调用的辅助函数，总之，这些lualib方便应用层调用skynet提供的基本服务，和其他库。
+
+## skynet层级结构 
+越是往下的层次，应用领域越广泛。越是往上的层级，针对性越强，应用领域越小，和业务越相关。上层允许调用下层，而下层不能直接调用上层的api。
+最上层：service lualib
+中间层：service-src lualib-src
+下层：skynet-src
+第三方层：3rd
+
+## skynet项目提供的测试流程
+./skynet examples/config	-- Launch first skynet node  (Gate server) and a skynet-master (see config for standalone option)
+./3rd/lua/lua examples/client.lua 	# Launch a client, and try to input hello.

@@ -1,0 +1,10 @@
+---
+alwaysApply: true
+description: proto说明
+---
+
+
+# proto
+    服务端目录：my-game
+    客户端目录：client
+    proto共用目录：client/game.sproto
