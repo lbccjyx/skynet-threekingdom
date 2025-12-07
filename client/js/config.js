@@ -21,8 +21,8 @@ export const CAMERA_CONFIG = {
     
     // Near and Far clipping planes
     // Use large negative near plane for Isometric view to avoid clipping objects "behind" camera plane but visible in frustum
-    near: -5000,
-    far: 10000 
+    near: -10000,
+    far: 20000 
 };
 
 // Light Settings

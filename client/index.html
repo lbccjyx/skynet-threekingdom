@@ -23,8 +23,11 @@
         </div>
     </div>
 
+    <!-- 3D Canvas 放在最底层作为背景 -->
+    <div id="three-container"></div>
+
     <div id="game-screen" class="hidden">
-        <div id="three-container"></div>
+        <!-- 顶部资源栏 -->
         <div class="top-bar">
             <div class="resource">金币: <span id="res-gold">0</span></div>
             <div class="resource">木材: <span id="res-wood">0</span></div>
@@ -33,15 +36,15 @@
             <div class="resource">人口: <span id="res-pop">0</span></div>
         </div>
         
-        <div class="main-area">
+        <!-- UI 覆盖层 -->
+        <div class="ui-layer">
             <div class="city-view" id="city-view">
                 <h2 style="display:none">城池: <span id="city-name"></span> (Lv.<span id="city-level"></span>)</h2>
                 <div class="view-controls">
                     <button id="btn-to-map">出城 (野外)</button>
                 </div>
-                <div class="buildings-grid" id="buildings-container">
-                    <!-- Buildings will be rendered here -->
-                </div>
+                <!-- 这里的 buildings-grid 仅用于调试或旧版显示，3D 模式下可能不需要，或者设为穿透 -->
+                <div class="buildings-grid" id="buildings-container"></div>
             </div>
             
             <div class="map-view hidden" id="map-view">
@@ -49,15 +52,14 @@
                 <div class="view-controls">
                     <button id="btn-back-to-city">回城</button>
                 </div>
-                <div class="map-grid" id="map-container">
-                    <!-- Map tiles and generals -->
-                </div>
+                <div class="map-grid" id="map-container"></div>
                 <div id="btn-to-city" class="mini-city-icon" title="回城"></div>
             </div>
         </div>
         
+        <!-- 日志面板改为悬浮小窗口 -->
         <div class="log-panel">
-            <h3>日志</h3>
+            <h3>日志 <button id="btn-toggle-log" style="float:right; width:auto; padding:2px 5px; font-size:10px;">-</button></h3>
             <div id="log-content"></div>
         </div>
     </div>
@@ -69,4 +71,3 @@
     <script type="module" src="js/main.js"></script>
 </body>
 </html>
-

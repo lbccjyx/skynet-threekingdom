@@ -95,6 +95,7 @@ export const RenderEngine = {
         this.renderer.setSize(width, height);
     },
 
+    // 3D世界渲染循环
     animate: function() {
         requestAnimationFrame(() => this.animate());
         
@@ -135,6 +136,7 @@ export const RenderEngine = {
         return texture;
     },
 
+    // 清空3D世界
     clearWorld: function() {
         this.objects = {};
         while(this.worldGroup.children.length > 0){ 
@@ -145,7 +147,7 @@ export const RenderEngine = {
         }
     },
     
-    // Create or Update Entity
+    // 图片渲染为3D对象
     createEntity: function(id, image, width, height, x, y) {
         if (this.objects[id]) {
             this.updateEntityPosition(id, x, y);
@@ -173,6 +175,7 @@ export const RenderEngine = {
         return mesh;
     },
 
+    // 更新建筑的位置
     updateEntityPosition: function(id, x, y) {
         const obj = this.objects[id];
         if (obj) {
@@ -181,6 +184,7 @@ export const RenderEngine = {
         }
     },
     
+    // 设置建筑的选中状态
     setHighlight: function(id, highlight) {
         const obj = this.objects[id];
         if (!obj) return;
@@ -196,6 +200,7 @@ export const RenderEngine = {
         }
     },
     
+    // 更新建筑的进度条
     updateProgress: function(id, percent) {
         const obj = this.objects['build_' + id];
         if (!obj) return;
@@ -240,6 +245,7 @@ export const RenderEngine = {
         }
     },
 
+    // 获取鼠标在3D世界中的碰撞点
     getIntersections: function(clientX, clientY) {
         const rect = this.renderer.domElement.getBoundingClientRect();
         const mouse = new THREE.Vector2();
@@ -252,25 +258,41 @@ export const RenderEngine = {
         return raycaster.intersectObjects(this.worldGroup.children, true);
     },
     
+    // 获取鼠标在3D世界中的位置
     getWorldPosition: function(clientX, clientY) {
+        // 获取画布的边界
         const rect = this.renderer.domElement.getBoundingClientRect();
+        // 获取鼠标在屏幕中的位置
         const mouse = new THREE.Vector2();
+        // 将鼠标位置转换为NDC坐标
         mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
         mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
         
+        // 创建射线投射器
         const raycaster = new THREE.Raycaster();
+        // 设置射线投射器从相机到鼠标位置
         raycaster.setFromCamera(mouse, this.camera);
         
+        // 创建平面
+        // Make the infinite plane match the ground level at y=0 (or whatever our ground is)
         const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        
+        // 创建目标向量
         const target = new THREE.Vector3();
         
-        raycaster.ray.intersectPlane(plane, target);
+        // 计算射线与平面的交点
+        const intersection = raycaster.ray.intersectPlane(plane, target);
         
-        if (!target) return { x: 0, y: 0 };
-        return { x: target.x, y: target.z };
+        // If intersection exists, return coordinates
+        if (intersection) {
+             return { x: intersection.x, y: intersection.z };
+        }
+        
+        // Fallback or "no intersection" - shouldn't happen with infinite plane unless ray is parallel
+        return { x: 0, y: 0 };
     },
 
-    // Camera Panning
+    // 鼠标中键拖拽的镜头平移 Camera Panning
     panCamera: function(deltaX, deltaY) {
         const zoom = this.camera.zoom;
         const panSpeed = 1.0 / zoom; 

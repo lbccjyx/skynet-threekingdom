@@ -6,6 +6,7 @@ import { renderCity, renderMap, switchView, createGhost, updateGhost, removeGhos
 import { ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from './config.js';
 import { RenderEngine } from './render_engine.js';
 
+// 设置右键菜单
 export function setupContextMenus() {
     const container = document.getElementById('three-container');
     if (!container) return;
@@ -79,6 +80,7 @@ export function setupContextMenus() {
     });
 }
 
+// 初始化UI监听器
 export function initListeners() {
     if (UI.btn.toMap) {
         UI.btn.toMap.addEventListener('click', () => switchView('map'));
@@ -92,13 +94,14 @@ export function initListeners() {
     }
 }
 
+// 初始化交互监听器
 export function initInteractionListeners() {
     injectStyles();
     
     const container = document.getElementById('three-container');
     if (!container) return;
     
-    // Zoom (Mouse Wheel)
+    // 鼠标滚轮缩放
     container.addEventListener('wheel', (e) => {
         // If Middle Mouse Button is held, this might be a pan attempt on some mouses, 
         // but typically wheel is just scroll.
@@ -115,7 +118,7 @@ export function initInteractionListeners() {
         Game.zoom = newZoom;
     });
 
-    // Mouse Move (Hover, Drag, Pan)
+    // 鼠标移动 (悬停, 拖拽, 平移)
     container.addEventListener('mousemove', (e) => {
         // 1. Handle Camera Panning
         if (RenderEngine.panState.isPanning) {
@@ -144,7 +147,7 @@ export function initInteractionListeners() {
             return;
         }
 
-        // 2. Handle Object Dragging
+        // 2. 处理物体拖拽
         if (Game.dragState.isDragging && Game.dragState.id) {
             e.preventDefault();
             const id = Game.dragState.id;
@@ -154,7 +157,7 @@ export function initInteractionListeners() {
             return;
         }
 
-        // 3. Handle Hover (Highlight)
+        // 3. 处理悬停 (高亮)
         const intersects = RenderEngine.getIntersections(e.clientX, e.clientY);
         if (intersects.length > 0) {
             const target = intersects.find(hit => hit.object.userData && (hit.object.userData.type === 'building' || hit.object.userData.type === 'general'));
@@ -163,10 +166,14 @@ export function initInteractionListeners() {
                 const id = target.object.userData.id;
                 if (Game.hoveredBuildingId !== id) {
                     if (Game.hoveredBuildingId) {
+                        // 取消高亮
                          RenderEngine.setHighlight(Game.hoveredBuildingId, false);
                     }
+                    // 设置高亮
                     RenderEngine.setHighlight(id, true);
+                    // 设置鼠标样式为指针
                     container.style.cursor = 'pointer';
+                    // 设置悬停的建筑ID
                     Game.hoveredBuildingId = id;
                 }
             } else {
@@ -185,21 +192,25 @@ export function initInteractionListeners() {
         }
     });
 
-    // Mouse Down (Start Drag / Pan)
+    // 鼠标按下 (开始拖拽 / 平移)
     container.addEventListener('mousedown', (e) => {
         // Middle Button (1) -> Start Pan
         if (e.button === 1) {
             e.preventDefault();
+            // 开始平移
             RenderEngine.panState.isPanning = true;
+            // 记录上次鼠标位置
             RenderEngine.panState.lastX = e.clientX;
             RenderEngine.panState.lastY = e.clientY;
+            // 设置鼠标样式为移动
             container.style.cursor = 'move';
             return;
         }
         
-        // Left Button (0) -> Start Drag / Interact
+        // 左键 (0) -> 开始拖拽 / 交互
         if (e.button !== 0) return;
 
+        // 如果正在放置建筑
         if (Game.placementState.active) {
             const { x, y, region, def } = Game.placementState;
             
@@ -230,10 +241,13 @@ export function initInteractionListeners() {
             return;
         }
 
+        // 获取鼠标在3D世界中的碰撞点
         const intersects = RenderEngine.getIntersections(e.clientX, e.clientY);
+        // 获取碰撞点对应的物体
         const target = intersects.find(hit => hit.object.userData && (hit.object.userData.type === 'building' || hit.object.userData.type === 'general'));
         
         if (target) {
+            // 获取碰撞点对应的物体
             const obj = target.object;
             const id = obj.userData.id;
             const worldPos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
@@ -256,6 +270,7 @@ export function initInteractionListeners() {
                  log(`Started dragging general ${id}`);
                  
             } else {
+                // 开始拖拽建筑
                  Game.dragState.timer = setTimeout(() => {
                     Game.dragState.isDragging = true;
                     Game.dragState.id = id;
@@ -275,9 +290,9 @@ export function initInteractionListeners() {
         }
     });
 
-    // Mouse Up (End Drag / Pan)
+    // 鼠标抬起 (结束拖拽 / 平移)
     const endInteraction = (e) => {
-        // End Pan
+        // 结束平移
         if (RenderEngine.panState.isPanning) {
             RenderEngine.panState.isPanning = false;
             container.style.cursor = 'default';
@@ -341,6 +356,7 @@ export function initInteractionListeners() {
     container.addEventListener('mouseleave', endInteraction);
 }
 
+// 注入样式
 function injectStyles() {
     // No specific styles needed for Three.js interaction yet, maybe cursor
 }

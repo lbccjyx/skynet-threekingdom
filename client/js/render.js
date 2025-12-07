@@ -3,6 +3,7 @@ import { UI } from './elements.js';
 import { TILE_SIZE, CAMERA_CONFIG, LIGHT_CONFIG, GRID_SIZE } from './config.js';
 import { RenderEngine } from './render_engine.js';
 
+// 城内城外视图切换
 export function switchView(viewName) {
     Game.currentView = viewName;
     if (viewName === 'city') {
@@ -16,6 +17,7 @@ export function switchView(viewName) {
     }
 }
 
+// 更新UI
 export function updateUI() {
     updateResourcesUI();
     
@@ -33,6 +35,7 @@ export function updateUI() {
     }
 }
 
+// 更新资源UI
 export function updateResourcesUI() {
     const items = Game.data.items;
     if (!items) return;
@@ -46,6 +49,7 @@ export function updateResourcesUI() {
     }
 }
 
+// 渲染城内
 export function renderCity() {
     RenderEngine.clearWorld();
     
@@ -65,6 +69,7 @@ export function renderCity() {
     }
 }
 
+// 渲染城外
 export function renderMap() {
     RenderEngine.clearWorld();
     
@@ -93,6 +98,7 @@ export function renderMap() {
     }
 }
 
+// 渲染建筑
 function renderBuilding(b) {
     const def = BUILDING_DEFINITIONS[b.type] || { width: 3, height: 2, name: 'Unknown', image: 'assets/guanfu.png' };
     const width = def.width * TILE_SIZE;
@@ -126,10 +132,12 @@ export function createGhost(def, x, y) {
     return mesh;
 }
 
+// 更新还没放置的建筑的位置
 export function updateGhost(x, y) {
     RenderEngine.updateEntityPosition('ghost_building', x, y);
 }
 
+// 删除还没放置的建筑
 export function removeGhost() {
     const id = 'ghost_building';
     const obj = RenderEngine.objects[id];
