@@ -1,6 +1,6 @@
 import { Game } from './state.js';
 import { UI } from './elements.js';
-import { TILE_SIZE } from './config.js';
+import { TILE_SIZE, CAMERA_CONFIG, LIGHT_CONFIG, GRID_SIZE } from './config.js';
 import { RenderEngine } from './render_engine.js';
 
 export function switchView(viewName) {
@@ -49,6 +49,11 @@ export function updateResourcesUI() {
 export function renderCity() {
     RenderEngine.clearWorld();
     
+    const bgMesh = RenderEngine.createEntity('city_bg', 'assets/chengqiang.png', TILE_SIZE*40, TILE_SIZE*50, 0, 0);
+    bgMesh.position.set(0, -5, 0); // Put it below everything
+    bgMesh.quaternion.set(0, 0, 0, 1); 
+    bgMesh.rotation.set(-Math.PI / 2, 0, Math.PI / 4);
+    
     // Render Buildings (Region 1)
     if (Game.data.buildings) {
         Game.data.buildings.forEach(b => {
@@ -89,21 +94,49 @@ export function renderMap() {
 }
 
 function renderBuilding(b) {
-    const def = BUILDING_DEFINITIONS[b.type] || { width: 2, height: 2, name: 'Unknown', image: 'assets/guanfu.png' };
+    const def = BUILDING_DEFINITIONS[b.type] || { width: 3, height: 2, name: 'Unknown', image: 'assets/guanfu.png' };
     const width = def.width * TILE_SIZE;
     const height = def.height * TILE_SIZE;
     
     // Use defined image or fallback
-    const image = def.image || 'assets/guanfu.png';
-    
-    // Position center calculation (if needed, but RenderEngine handles plane center)
-    // Game data b.x, b.y is likely center or top-left?
-    // In DOM version: left = b.x - width/2. implies b.x is CENTER.
-    // In RenderEngine: mesh.position.set(x, ...) puts center at x.
-    // So we just pass b.x, b.y directly.
+    const image = def.image;
     
     const mesh = RenderEngine.createEntity('build_' + b.id, image, width, height, b.x, b.y);
     mesh.userData.type = 'building';
     mesh.userData.data = b;
     mesh.userData.def = def;
+    mesh.renderOrder =10 ; 
+}
+
+// 下面是还没放置的建筑 在游戏中说是幽灵
+export function createGhost(def, x, y) {
+    const width = def.width * TILE_SIZE;
+    const height = def.height * TILE_SIZE;
+    const image = def.image;
+    const id = 'ghost_building';
+    
+    const mesh = RenderEngine.createEntity(id, image, width, height, x, y);
+    
+    if (mesh.material) {
+        mesh.material.opacity = 0.6;
+        mesh.material.transparent = true;
+        mesh.material.color.setHex(0x99ff99); // Light green tint
+    }
+    
+    return mesh;
+}
+
+export function updateGhost(x, y) {
+    RenderEngine.updateEntityPosition('ghost_building', x, y);
+}
+
+export function removeGhost() {
+    const id = 'ghost_building';
+    const obj = RenderEngine.objects[id];
+    if (obj) {
+        RenderEngine.worldGroup.remove(obj);
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) obj.material.dispose();
+        delete RenderEngine.objects[id];
+    }
 }

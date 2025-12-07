@@ -288,5 +288,14 @@ export const RenderEngine = {
         
         this.camera.translateX(moveX);
         this.camera.translateY(moveY);
+    },
+
+    // 虚线网格设置为是否可见 拖拽和建筑的时候可见。
+    setGridVisibility: function(visible) {
+        if (!this.gridHelper) {
+             this.gridHelper = new THREE.GridHelper(GRID_CONFIG.size, GRID_CONFIG.divisions);
+             this.scene.add(this.gridHelper);
+        }
+        this.gridHelper.visible = visible;
     }
 };

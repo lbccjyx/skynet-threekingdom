@@ -2,7 +2,7 @@ import { UI } from './elements.js';
 import { Game } from './state.js';
 import { sendRequest } from './api.js';
 import { log } from './utils.js';
-import { renderCity, renderMap, switchView } from './render.js';
+import { renderCity, renderMap, switchView, createGhost, updateGhost, removeGhost } from './render.js';
 import { ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from './config.js';
 import { RenderEngine } from './render_engine.js';
 
@@ -12,6 +12,14 @@ export function setupContextMenus() {
 
     container.addEventListener('contextmenu', (e) => {
         e.preventDefault();
+        
+        if (Game.placementState.active) {
+            Game.placementState.active = false;
+            Game.placementState.def = null;
+            RenderEngine.setGridVisibility(false);
+            removeGhost();
+            return;
+        }
         
         // Only allow context menu if no active drag and no active pan
         if (Game.dragState.isDragging || RenderEngine.panState.isPanning) return;
@@ -48,25 +56,17 @@ export function setupContextMenus() {
             item.onclick = (e) => {
                 e.stopPropagation();
                 
-                log(`Building ${def.name} at (${buildX}, ${buildY})`);
+                log(`Selected ${def.name}, entering placement mode`);
+
+                Game.placementState.active = true;
+                Game.placementState.def = def;
+                Game.placementState.region = region;
+                // Start ghost at current mouse pos or where click happened
+                Game.placementState.x = buildX;
+                Game.placementState.y = buildY;
                 
-                sendRequest('build', {
-                    type: def.key,
-                    x: buildX,
-                    y: buildY,
-                    region: region
-                }, (res) => {
-                    if (res.ok) {
-                        log("Building started!");
-                        if (res.building) {
-                            Game.data.buildings.push(res.building);
-                            if (region === 1) renderCity();
-                            else renderMap();
-                        }
-                    } else {
-                        log("Build failed");
-                    }
-                });
+                RenderEngine.setGridVisibility(true);
+                createGhost(def, buildX, buildY);
 
                 menu.remove();
                 document.removeEventListener('click', closeMenu);
@@ -132,6 +132,18 @@ export function initInteractionListeners() {
 
         const worldPos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
         
+        if (Game.placementState.active) {
+            const snapX = Math.floor(worldPos.x);
+            const snapY = Math.floor(worldPos.y);
+            
+            if (snapX !== Game.placementState.x || snapY !== Game.placementState.y) {
+                Game.placementState.x = snapX;
+                Game.placementState.y = snapY;
+                updateGhost(snapX, snapY);
+            }
+            return;
+        }
+
         // 2. Handle Object Dragging
         if (Game.dragState.isDragging && Game.dragState.id) {
             e.preventDefault();
@@ -188,6 +200,36 @@ export function initInteractionListeners() {
         // Left Button (0) -> Start Drag / Interact
         if (e.button !== 0) return;
 
+        if (Game.placementState.active) {
+            const { x, y, region, def } = Game.placementState;
+            
+            log(`Building ${def.name} at (${x}, ${y})`);
+            
+            sendRequest('build', {
+                type: def.key,
+                x: x,
+                y: y,
+                region: region
+            }, (res) => {
+                if (res.ok) {
+                    log("Building started!");
+                    if (res.building) {
+                        Game.data.buildings.push(res.building);
+                        if (region === 1) renderCity();
+                        else renderMap();
+                    }
+                } else {
+                    log("Build failed");
+                }
+            });
+
+            Game.placementState.active = false;
+            Game.placementState.def = null;
+            RenderEngine.setGridVisibility(false);
+            removeGhost();
+            return;
+        }
+
         const intersects = RenderEngine.getIntersections(e.clientX, e.clientY);
         const target = intersects.find(hit => hit.object.userData && (hit.object.userData.type === 'building' || hit.object.userData.type === 'general'));
         
@@ -210,6 +252,7 @@ export function initInteractionListeners() {
                  Game.dragState.offsetX = worldPos.x - objGameX;
                  Game.dragState.offsetY = worldPos.y - objGameY;
                  
+                 RenderEngine.setGridVisibility(true);
                  log(`Started dragging general ${id}`);
                  
             } else {
@@ -225,6 +268,7 @@ export function initInteractionListeners() {
                     Game.dragState.offsetY = worldPos.y - objGameY;
                     
                     Game.dragState.timer = null;
+                    RenderEngine.setGridVisibility(true);
                     log(`Started dragging building ${id}`);
                 }, 500);
             }
@@ -289,6 +333,7 @@ export function initInteractionListeners() {
             Game.dragState.isDragging = false;
             Game.dragState.id = null;
             Game.dragState.type = null;
+            RenderEngine.setGridVisibility(false);
         }
     };
 

@@ -28,6 +28,13 @@ export const Game = {
         offsetX: 0,
         offsetY: 0,
         timer: null
+    },
+    placementState: {
+        active: false,
+        def: null,
+        x: 0,
+        y: 0,
+        region: 1
     }
 };
 

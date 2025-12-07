@@ -10,7 +10,7 @@ export const CAMERA_CONFIG = {
     // Position of the camera. 
     // For Isometric view, usually equal X, Y, Z offsets.
     // Increase distance to cover more area if needed.
-    posX: 100,
+    posX: 100, 
     posY: 100,
     posZ: 100,
     
@@ -35,13 +35,13 @@ export const LIGHT_CONFIG = {
     dirLightPos: { x: 50, y: 100, z: 50 }
 };
 
-export const TILE_SIZE = 100;
+export const TILE_SIZE = 30;
 
 // Grid Settings
 // Ensure size is a multiple of TILE_SIZE * 2 to keep (0,0) on a grid line intersection
-const GRID_SIZE = 160 * TILE_SIZE;
+export const GRID_SIZE = 40 * TILE_SIZE;
 export const GRID_CONFIG = {
     size: GRID_SIZE, 
     divisions: GRID_SIZE / TILE_SIZE, // Ensures cell size equals TILE_SIZE
-    visible: true
+    visible: false
 };
