@@ -9,6 +9,10 @@ my-game/*
 ./skynet my-game/config
 python3 client/start_server.py 
 
+## 关闭服务
+ps -ef | grep skynet
+kill -9 xxx
+
 ## 新增动态表
 my-game/service/agent.lua: load_data()加载数据的时候加入内存
 并且使用 DataWrapper 等玩家下线的时候把脏数据保存到sql中

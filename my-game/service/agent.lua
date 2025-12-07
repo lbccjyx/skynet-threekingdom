@@ -142,6 +142,13 @@ end
 
 local REQUEST = {}
 
+-- Load logic handlers
+local env = {
+    REQUEST = REQUEST,
+    data = data,
+}
+require("agent.general_handler").init(env)
+
 function REQUEST.login(args)
     local r_user = data.user and data.user:raw() or { id = 0, username = "unknown" }
     local r_city = data.city and data.city:raw() or { id = 0, name = "City", level = 1 }
@@ -170,21 +177,8 @@ function REQUEST.login(args)
 end
 
 
-function REQUEST.move_general(args)
-    local gid = args.id
-    local x = args.x
-    local y = args.y
-    for _, g in ipairs(data.generals) do
-        -- g is DataWrapper, can access .id via __index
-        if g.id == gid then
-            g.x = x -- Triggers __newindex -> marks dirty
-            g.y = y
-            -- No db:query needed here
-            return { ok = true, id = gid, x = x, y = y }
-        end
-    end
-    return { ok = false }
-end
+-- Move logic to agent/general_handler.lua
+-- function REQUEST.move_general(args) ... end
 
 function REQUEST.build(args)
     local type = args.type

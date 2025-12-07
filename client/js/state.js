@@ -1,3 +1,5 @@
+import { INIT_ZOOM } from './config.js';
+
 export const Game = {
     token: null,
     wsUrl: null,
@@ -17,6 +19,7 @@ export const Game = {
     selectedBuildingType: null,
     serverTimeOffset: 0,
     currentView: 'city', // 'city' or 'map'
+    zoom: INIT_ZOOM,
     hoveredBuildingId: null,
     dragState: {
         isDragging: false,

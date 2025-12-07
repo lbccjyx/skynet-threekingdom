@@ -1,6 +1,7 @@
 import { Game } from './state.js';
 import { connectWS } from './network.js';
 import { setupContextMenus, initListeners, initInteractionListeners } from './input.js';
+import { RenderEngine } from './render_engine.js';
 
 export async function startGame() {
     // 1. Load Sproto Definition
@@ -25,6 +26,9 @@ export async function startGame() {
         initListeners();
         initInteractionListeners();
 
+        // Initialize 3D Engine
+        RenderEngine.init();
+
         // Start Game Loop (Progress bars, etc.)
         startGameLoop();
         
@@ -36,23 +40,25 @@ export async function startGame() {
 
 function startGameLoop() {
     setInterval(() => {
-        const buildings = document.querySelectorAll('.building-entity');
+        if (!Game.data.buildings) return;
+
         const now = (Date.now() / 1000) + (Game.serverTimeOffset || 0);
+        const definitions = window.BUILDING_DEFINITIONS || {}; // Global from StaticData.js
         
-        buildings.forEach(b => {
-            const begin = parseInt(b.dataset.beginTime);
-            const duration = parseInt(b.dataset.buildSec);
+        Game.data.buildings.forEach(b => {
+            const begin = parseInt(b.begin_build_time || 0);
+            
+            const def = definitions[b.type];
+            const duration = def ? (def.build_sec || 10) : 10;
+            
             if (begin > 0 && duration > 0) {
                 const elapsed = now - begin;
                 let pct = (elapsed / duration) * 100;
+                
                 if (pct > 100) pct = 100;
                 if (pct < 0) pct = 0;
                 
-                const fill = b.querySelector('.progress-fill');
-                if (fill) fill.style.width = pct + '%';
-                
-                const bar = b.querySelector('.progress-bar');
-                if (pct >= 100 && bar) bar.style.display = 'none';
+                RenderEngine.updateProgress(b.id, pct);
             }
         });
     }, 100);

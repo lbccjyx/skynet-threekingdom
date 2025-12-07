@@ -3,87 +3,83 @@ import { Game } from './state.js';
 import { sendRequest } from './api.js';
 import { log } from './utils.js';
 import { renderCity, renderMap, switchView } from './render.js';
+import { ZOOM_MIN, ZOOM_MAX, ZOOM_STEP } from './config.js';
+import { RenderEngine } from './render_engine.js';
 
 export function setupContextMenus() {
-    const containers = [
-        { el: UI.map.container, region: 2 },
-        { el: UI.city.container, region: 1 }
-    ];
+    const container = document.getElementById('three-container');
+    if (!container) return;
 
-    containers.forEach(ctx => {
-        if (!ctx.el) return;
+    container.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        
+        // Only allow context menu if no active drag
+        if (Game.dragState.isDragging) return;
 
-        ctx.el.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            // Capture coordinates at right-click time
-            const rect = ctx.el.getBoundingClientRect();
-            const buildX = Math.floor(e.clientX - rect.left + ctx.el.scrollLeft);
-            const buildY = Math.floor(e.clientY - rect.top + ctx.el.scrollTop);
+        const pos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
+        const buildX = Math.floor(pos.x);
+        const buildY = Math.floor(pos.y);
+        
+        // Determine region based on current view
+        const region = Game.currentView === 'city' ? 1 : 2;
 
-            // Remove existing menu
-            const existing = document.querySelector('.context-menu');
-            if (existing) existing.remove();
+        // Remove existing menu
+        const existing = document.querySelector('.context-menu');
+        if (existing) existing.remove();
+        
+        // Create Menu
+        const menu = document.createElement('div');
+        menu.className = 'context-menu';
+        menu.style.left = e.clientX + 'px';
+        menu.style.top = e.clientY + 'px';
+        
+        const closeMenu = () => {
+            if (document.body.contains(menu)) {
+                menu.remove();
+            }
+            document.removeEventListener('click', closeMenu);
+        };
+
+        const definitions = window.BUILDING_DEFINITIONS || BUILDING_DEFINITIONS;
+
+        for (const key in definitions) {
+            const def = definitions[key];
+            const item = document.createElement('div');
+            item.className = 'context-menu-item';
+            item.textContent = def.name;
             
-            // 右键后展示的建筑列表
-            const menu = document.createElement('div');
-            menu.className = 'context-menu';
-            menu.style.left = e.clientX + 'px';
-            menu.style.top = e.clientY + 'px';
-            
-            // Define closeMenu first
-            const closeMenu = () => {
-                if (document.body.contains(menu)) {
-                    menu.remove();
-                }
+            item.onclick = (e) => {
+                e.stopPropagation();
+                
+                log(`Building ${def.name} at (${buildX}, ${buildY})`);
+                
+                sendRequest('build', {
+                    type: def.key,
+                    x: buildX,
+                    y: buildY,
+                    region: region
+                }, (res) => {
+                    if (res.ok) {
+                        log("Building started!");
+                        if (res.building) {
+                            Game.data.buildings.push(res.building);
+                            if (region === 1) renderCity();
+                            else renderMap();
+                        }
+                    } else {
+                        log("Build failed");
+                    }
+                });
+
+                menu.remove();
                 document.removeEventListener('click', closeMenu);
             };
-
-            // Access global BUILDING_DEFINITIONS
-            const definitions = window.BUILDING_DEFINITIONS || BUILDING_DEFINITIONS;
-
-            for (const key in definitions) {
-                const def = definitions[key];
-                const item = document.createElement('div');
-                item.className = 'context-menu-item';
-                item.textContent = def.name;
-                
-                item.onclick = (e) => {
-                    e.stopPropagation();
-                    
-                    log(`Building ${def.name} at (${buildX}, ${buildY})`);
-                    
-                    // Send build request directly using captured coordinates
-                    sendRequest('build', {
-                        type: def.key,
-                        x: buildX,
-                        y: buildY,
-                        region: ctx.region
-                    }, (res) => {
-                        if (res.ok) {
-                            log("Building started!");
-                            if (res.building) {
-                                Game.data.buildings.push(res.building);
-                                if (ctx.region === 1) renderCity();
-                                else renderMap();
-                            }
-                        } else {
-                            log("Build failed (Not enough resources?)");
-                        }
-                    });
-
-                    menu.remove();
-                    document.removeEventListener('click', closeMenu);
-                };
-                menu.appendChild(item);
-            }
-            
-            document.body.appendChild(menu);
-            
-            // Click outside to close - add delay to avoid immediate trigger
-            setTimeout(() => document.addEventListener('click', closeMenu), 100);
-        });
+            menu.appendChild(item);
+        }
+        
+        document.body.appendChild(menu);
+        
+        setTimeout(() => document.addEventListener('click', closeMenu), 100);
     });
 }
 
@@ -91,8 +87,10 @@ export function initListeners() {
     if (UI.btn.toMap) {
         UI.btn.toMap.addEventListener('click', () => switchView('map'));
     }
-    if (UI.btn.toCity) {
-        UI.btn.toCity.addEventListener('click', () => switchView('city'));
+    // btn-to-city might be the mini icon or the one in map view
+    const toCityBtn = document.getElementById('btn-to-city'); 
+    if (toCityBtn) {
+        toCityBtn.addEventListener('click', () => switchView('city'));
     }
     if (UI.btn.backToCity) {
         UI.btn.backToCity.addEventListener('click', () => switchView('city'));
@@ -102,175 +100,197 @@ export function initListeners() {
 export function initInteractionListeners() {
     injectStyles();
     
-    const containers = [UI.city.container, UI.map.container];
+    const container = document.getElementById('three-container');
+    if (!container) return;
     
-    containers.forEach(container => {
-        if (!container) return;
+    // Zoom (Mouse Wheel)
+    container.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const direction = e.deltaY > 0 ? -1 : 1;
+        let newZoom = RenderEngine.camera.zoom + (direction * 0.1);
+        if (newZoom < 0.5) newZoom = 0.5;
+        if (newZoom > 3.0) newZoom = 3.0;
+        
+        RenderEngine.camera.zoom = newZoom;
+        RenderEngine.camera.updateProjectionMatrix();
+        
+        Game.zoom = newZoom; // Sync state
+    });
 
-        // Mouse Move (Hover & Drag)
-        container.addEventListener('mousemove', (e) => {
-            // 1. Handle Dragging
-            if (Game.dragState.isDragging && Game.dragState.el) {
-                e.preventDefault(); // Prevent selection while dragging
-                const rect = container.getBoundingClientRect();
-                const x = e.clientX - rect.left + container.scrollLeft;
-                const y = e.clientY - rect.top + container.scrollTop;
-                
-                const el = Game.dragState.el;
-                // Apply the offset so the element moves relative to where we grabbed it
-                el.style.left = (x - Game.dragState.offsetX) + 'px';
-                el.style.top = (y - Game.dragState.offsetY) + 'px';
-                return; // Skip hover logic if dragging
-            }
+    // Mouse Move (Hover & Drag)
+    container.addEventListener('mousemove', (e) => {
+        const worldPos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
+        
+        // 1. Handle Dragging
+        if (Game.dragState.isDragging && Game.dragState.id) {
+            e.preventDefault();
+            
+            // Move object
+            const id = Game.dragState.id;
+            
+            // New Position = World Mouse Pos - Offset
+            const newX = worldPos.x - Game.dragState.offsetX;
+            const newY = worldPos.y - Game.dragState.offsetY;
+            
+            // Update visually
+            RenderEngine.updateEntityPosition(id, newX, newY);
+            
+            return;
+        }
 
-            // 2. Handle Long Press Cancel (if moved too much before drag starts)
-            if (Game.dragState.timer) {
-                 const rect = container.getBoundingClientRect();
-                 const currentX = e.clientX - rect.left + container.scrollLeft;
-                 const currentY = e.clientY - rect.top + container.scrollTop;
-                 
-                 // Simple distance check - if moved more than 5px, cancel long press
-                 // We need to store start pos for this check, but for now, strict hold is fine.
-                 // Or just let them move slightly.
-            }
-
-            // 3. Handle Hover
-            const target = e.target.closest('.building-entity');
+        // 2. Handle Hover (Highlight)
+        // Check intersections
+        const intersects = RenderEngine.getIntersections(e.clientX, e.clientY);
+        if (intersects.length > 0) {
+            // Find first building or general
+            const target = intersects.find(hit => hit.object.userData && (hit.object.userData.type === 'building' || hit.object.userData.type === 'general'));
+            
             if (target) {
-                const id = parseInt(target.dataset.id);
-                // Only update if changed
+                const id = target.object.userData.id; // "build_123" or "gen_456"
                 if (Game.hoveredBuildingId !== id) {
-                    // Remove old highlight
-                    const old = container.querySelector('.building-entity.highlight');
-                    if (old) old.classList.remove('highlight');
-                    
-                    // Add new highlight
-                    target.classList.add('highlight');
+                    // TODO: Visual Highlight in Three.js (e.g. emission or color tint)
+                    // For now, change cursor
+                    container.style.cursor = 'pointer';
                     Game.hoveredBuildingId = id;
                 }
             } else {
-                if (Game.hoveredBuildingId !== null) {
-                    const old = container.querySelector('.building-entity.highlight');
-                    if (old) old.classList.remove('highlight');
+                 if (Game.hoveredBuildingId !== null) {
+                    container.style.cursor = 'default';
                     Game.hoveredBuildingId = null;
                 }
             }
-        });
-
-        // Mouse Down (Start Long Press)
-        container.addEventListener('mousedown', (e) => {
-            // Left click only
-            if (e.button !== 0) return;
-
-            const target = e.target.closest('.building-entity');
-            if (!target) return;
-
-            const id = parseInt(target.dataset.id);
-            
-            // Calculate offset
-            const rect = container.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left + container.scrollLeft;
-            const mouseY = e.clientY - rect.top + container.scrollTop;
-            
-            // Current element position
-            // Note: style.left might be empty if defined in CSS, but here it's inline from render
-            const elLeft = parseFloat(target.style.left) || 0;
-            const elTop = parseFloat(target.style.top) || 0;
-
-            // Store start position for tolerance check (optional)
-            
-            Game.dragState.timer = setTimeout(() => {
-                Game.dragState.isDragging = true;
-                Game.dragState.buildingId = id;
-                Game.dragState.el = target;
-                // Offset from mouse to element top-left
-                Game.dragState.offsetX = mouseX - elLeft;
-                Game.dragState.offsetY = mouseY - elTop;
-                Game.dragState.timer = null;
-                
-                target.classList.add('dragging');
-                log(`Started dragging building ${id}`);
-            }, 500); // 500ms long press
-        });
-
-        // Mouse Up (End Drag / Cancel Timer)
-        const endInteraction = (e) => {
-             if (Game.dragState.timer) {
-                clearTimeout(Game.dragState.timer);
-                Game.dragState.timer = null;
+        } else {
+             if (Game.hoveredBuildingId !== null) {
+                container.style.cursor = 'default';
+                Game.hoveredBuildingId = null;
             }
-
-            if (Game.dragState.isDragging) {
-                const el = Game.dragState.el;
-                const id = Game.dragState.buildingId;
-                
-                // Calculate new center position for server
-                // el.style.left is top-left corner. 
-                // Center = Left + Width/2
-                const width = parseFloat(el.style.width);
-                const height = parseFloat(el.style.height);
-                const left = parseFloat(el.style.left);
-                const top = parseFloat(el.style.top);
-                
-                const newCenterX = Math.floor(left + width / 2);
-                const newCenterY = Math.floor(top + height / 2);
-
-                // Reset State
-                Game.dragState.isDragging = false;
-                Game.dragState.buildingId = null;
-                Game.dragState.el = null;
-                el.classList.remove('dragging');
-
-                log(`Moved building ${id} to (${newCenterX}, ${newCenterY})`);
-
-                // Send Request
-                sendRequest('build_move', {
-                    id: id,
-                    new_x: newCenterX,
-                    new_y: newCenterY
-                }, (res) => {
-                    if (res.ok) {
-                        log('Move successful');
-                        // Update local data
-                        const b = Game.data.buildings.find(b => b.id === id);
-                        if (b) {
-                            b.x = res.building.x;
-                            b.y = res.building.y;
-                        }
-                        // Re-render to snap to grid or correct position
-                        if (container === UI.city.container) renderCity();
-                        else renderMap();
-                    } else {
-                        log('Move failed');
-                        // Revert position (Re-render will fix it because we didn't update b.x/y)
-                        if (container === UI.city.container) renderCity();
-                        else renderMap();
-                    }
-                });
-            }
-        };
-
-        container.addEventListener('mouseup', endInteraction);
-        // If mouse leaves container, end drag
-        container.addEventListener('mouseleave', endInteraction);
+        }
     });
+
+    // Mouse Down (Start Drag)
+    container.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+
+        const intersects = RenderEngine.getIntersections(e.clientX, e.clientY);
+        const target = intersects.find(hit => hit.object.userData && (hit.object.userData.type === 'building' || hit.object.userData.type === 'general'));
+        
+        if (target) {
+            const obj = target.object;
+            const id = obj.userData.id;
+            const worldPos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
+            
+            // Start Drag immediately or timer? Original had timer.
+            // Let's implement immediate drag for generals, timer for buildings? 
+            // Original: Buildings had timer. Generals had click.
+            // Let's unify or stick to timer for buildings to distinguish from click (info).
+            
+            const isGeneral = obj.userData.type === 'general';
+            
+            if (isGeneral) {
+                 // Generals drag immediately in old code? No, old code: Click -> Random Move.
+                 // "Simple Drag & Drop (Mock)" in render.js was actually just onclick -> move random.
+                 // Wait, render.js line 86: el.onclick... move to random.
+                 // OK, let's implement actual drag for generals now since we are in 3D.
+                 
+                 Game.dragState.isDragging = true;
+                 Game.dragState.id = id; // "gen_xxx"
+                 Game.dragState.type = 'general';
+                 Game.dragState.data = obj.userData.data;
+                 
+                 // Offset
+                 // Object Pos (Game Coords)
+                 // obj.position.x is GameX. obj.position.y is -GameY.
+                 const objGameX = obj.position.x;
+                 const objGameY = -obj.position.y;
+                 
+                 Game.dragState.offsetX = worldPos.x - objGameX;
+                 Game.dragState.offsetY = worldPos.y - objGameY;
+                 
+                 log(`Started dragging general ${id}`);
+                 
+            } else {
+                // Building Long Press
+                 Game.dragState.timer = setTimeout(() => {
+                    Game.dragState.isDragging = true;
+                    Game.dragState.id = id;
+                    Game.dragState.type = 'building';
+                    
+                    const objGameX = obj.position.x;
+                    const objGameY = -obj.position.y;
+                    
+                    Game.dragState.offsetX = worldPos.x - objGameX;
+                    Game.dragState.offsetY = worldPos.y - objGameY;
+                    
+                    Game.dragState.timer = null;
+                    log(`Started dragging building ${id}`);
+                }, 500);
+            }
+        }
+    });
+
+    // Mouse Up (End Drag)
+    const endInteraction = (e) => {
+        if (Game.dragState.timer) {
+            clearTimeout(Game.dragState.timer);
+            Game.dragState.timer = null;
+        }
+
+        if (Game.dragState.isDragging) {
+            const id = Game.dragState.id;
+            const type = Game.dragState.type;
+            const obj = RenderEngine.objects[id];
+            
+            if (obj) {
+                const finalX = Math.floor(obj.position.x);
+                const finalY = Math.floor(-obj.position.y);
+                
+                log(`Moved ${type} ${id} to (${finalX}, ${finalY})`);
+
+                if (type === 'general') {
+                     // Move General
+                     const generalId = obj.userData.data.id;
+                     sendRequest('move_general', { id: generalId, x: finalX, y: finalY }, (res) => {
+                        if (res.ok) {
+                            // Update data
+                            const g = Game.data.generals.find(g => g.id === generalId);
+                            if (g) { g.x = res.x; g.y = res.y; }
+                            renderMap();
+                        } else {
+                            renderMap(); // Revert
+                        }
+                    });
+                } else {
+                    // Move Building
+                    // ID format "build_123" -> 123
+                    const buildId = parseInt(id.replace('build_', ''));
+                     sendRequest('build_move', {
+                        id: buildId,
+                        new_x: finalX,
+                        new_y: finalY
+                    }, (res) => {
+                        if (res.ok) {
+                            const b = Game.data.buildings.find(b => b.id === buildId);
+                            if (b) { b.x = res.building.x; b.y = res.building.y; }
+                            if (Game.currentView === 'city') renderCity();
+                            else renderMap();
+                        } else {
+                            if (Game.currentView === 'city') renderCity();
+                            else renderMap();
+                        }
+                    });
+                }
+            }
+
+            Game.dragState.isDragging = false;
+            Game.dragState.id = null;
+            Game.dragState.type = null;
+        }
+    };
+
+    container.addEventListener('mouseup', endInteraction);
+    container.addEventListener('mouseleave', endInteraction);
 }
 
 function injectStyles() {
-    const style = document.createElement('style');
-    style.textContent = `
-        .building-entity.highlight {
-            box-shadow: 0 0 10px 2px gold;
-            z-index: 10;
-            cursor: grab;
-        }
-        .building-entity.dragging {
-            opacity: 0.8;
-            box-shadow: 0 0 15px 5px cyan;
-            z-index: 100;
-            cursor: grabbing;
-            pointer-events: none; /* Let mouse events pass through during drag if needed, but here we drag via container */
-        }
-    `;
-    document.head.appendChild(style);
+    // No specific styles needed for Three.js interaction yet, maybe cursor
 }
