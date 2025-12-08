@@ -29,7 +29,7 @@ export const CAMERA_CONFIG = {
 // Light Settings
 export const LIGHT_CONFIG = {
     ambientColor: 0xffffff,
-    ambientIntensity: 0.8, // Increased for better visibility
+    ambientIntensity: 0.7, // Increased for better visibility
     
     dirLightColor: 0xffffff,
     dirLightIntensity: 0.8,

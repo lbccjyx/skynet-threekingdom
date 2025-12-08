@@ -1,9 +1,9 @@
 # commandfile
 
 ## 需求
-    客户端圈地功能的修改
-    1：圈地移动的时候，虚拟显示地块和实际最终地块不一致。
-    因为 js/game/build_rect.js的this.updateRect(cx, cy);的函数根本没有从 js/input/d_build_rect_input.js的虚拟地块去取参数。所以自然对不上。应该是build_rect.js再加一个函数。或者是做一些适配。
+    客户端圈地的修改
+    函数 createFlatEntity: function的修改。
+    原来是 x行Y列的正方形格子色块。现在每块格子帮我改成1个3D模型。这个模型你去开源网站下载一个免费的。
 
 ## 主要要求 
     代码和函数不能略写，你可以一个一个文件写。写的不好的，还可以反回来写。根据我的要求去设计表结构。

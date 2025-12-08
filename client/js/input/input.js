@@ -9,6 +9,20 @@ import { BuildRect } from '../game/build_rect.js';
 import { BuildRectInput } from './d_build_rect_input.js';
 import { BuildingInput } from './d_building_input.js';
 
+// Helper to find interactive parent
+function findInteractiveObject(object) {
+    let curr = object;
+    while(curr) {
+        if (curr.userData && (curr.userData.type === 'building' || curr.userData.type === 'general' || curr.userData.type === 'rect_building')) {
+            return curr;
+        }
+        curr = curr.parent;
+        // Stop at scene or worldGroup to prevent infinite loops or going too high
+        if (curr && (curr.type === 'Scene' || curr.type === 'Group' && !curr.parent)) return null; 
+    }
+    return null;
+}
+
 // 设置右键菜单
 export function setupContextMenus() {
     const container = document.getElementById('three-container');
@@ -56,12 +70,23 @@ export function setupContextMenus() {
 
         // Check for right click on existing objects (Delete menu)
         const intersects = RenderEngine.getIntersections(e.clientX, e.clientY);
-        const target = intersects.find(hit => hit.object.userData && (hit.object.userData.type === 'rect_building'));
-
-        if (BuildRectInput.handleContextMenu(e, target, menu, closeMenu)) {
-             document.body.appendChild(menu);
-             setTimeout(() => document.addEventListener('click', closeMenu), 100);
-             return;
+        
+        let targetObject = null;
+        for (const hit of intersects) {
+            const found = findInteractiveObject(hit.object);
+            if (found) {
+                targetObject = found;
+                break;
+            }
+        }
+        
+        if (targetObject && targetObject.userData.type === 'rect_building') {
+             // Pass { object: targetObject } to simulate old structure if needed, or just modify handler
+             if (BuildRectInput.handleContextMenu(e, { object: targetObject }, menu, closeMenu)) {
+                 document.body.appendChild(menu);
+                 setTimeout(() => document.addEventListener('click', closeMenu), 100);
+                 return;
+             }
         }
 
         // Building Placement Menu
@@ -185,10 +210,17 @@ export function initInteractionListeners() {
         // 3. 处理悬停 (高亮)
         const intersects = RenderEngine.getIntersections(e.clientX, e.clientY);
         if (intersects.length > 0) {
-            const target = intersects.find(hit => hit.object.userData && (hit.object.userData.type === 'building' || hit.object.userData.type === 'general' || hit.object.userData.type === 'rect_building'));
+            let targetObject = null;
+            for (const hit of intersects) {
+                const found = findInteractiveObject(hit.object);
+                if (found) {
+                    targetObject = found;
+                    break;
+                }
+            }
             
-            if (target) {
-                const id = target.object.userData.id;
+            if (targetObject) {
+                const id = targetObject.userData.id;
                 if (Game.hoveredBuildingId !== id) {
                     if (Game.hoveredBuildingId) {
                         // 取消高亮
@@ -249,11 +281,18 @@ export function initInteractionListeners() {
         // 获取鼠标在3D世界中的碰撞点
         const intersects = RenderEngine.getIntersections(e.clientX, e.clientY);
         // 获取碰撞点对应的物体
-        const target = intersects.find(hit => hit.object.userData && (hit.object.userData.type === 'building' || hit.object.userData.type === 'general' || hit.object.userData.type === 'rect_building'));
+        let targetObject = null;
+        for (const hit of intersects) {
+            const found = findInteractiveObject(hit.object);
+            if (found) {
+                targetObject = found;
+                break;
+            }
+        }
         
-        if (target) {
+        if (targetObject) {
             // 获取碰撞点对应的物体
-            const obj = target.object;
+            const obj = targetObject;
             const id = obj.userData.id;
             const worldPos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
             
@@ -375,9 +414,16 @@ export function initInteractionListeners() {
     // 鼠标双击空地，打印坐标
     container.addEventListener('dblclick', (e) => {
         const intersects = RenderEngine.getIntersections(e.clientX, e.clientY);
-        const target = intersects.find(hit => hit.object.userData && (hit.object.userData.type === 'building' || hit.object.userData.type === 'general'));
+        let targetObject = null;
+        for (const hit of intersects) {
+            const found = findInteractiveObject(hit.object);
+            if (found) {
+                targetObject = found;
+                break;
+            }
+        }
         
-        if (!target) {
+        if (!targetObject) {
             const worldPos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
             const x = Math.floor(worldPos.x);
             const y = Math.floor(worldPos.y);
