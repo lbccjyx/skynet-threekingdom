@@ -18,7 +18,8 @@ local data = {
     city = {},
     items = {},
     generals = {},
-    buildings = {}
+    buildings = {},
+    rect_buildings = {}
 }
 
 local CMD = {}
@@ -87,6 +88,14 @@ local function load_data()
             table.insert(data.buildings, DataWrapper.new(db, "d_buildings", "id", row))
         end
     end
+
+    res = db:query("SELECT * FROM d_farmland WHERE user_id="..user_id)
+    data.rect_buildings = {}
+    if res then
+        for _, row in ipairs(res) do
+            table.insert(data.rect_buildings, DataWrapper.new(db, "d_farmland", "id", row))
+        end
+    end
 end
 
 local function save_items()
@@ -99,6 +108,7 @@ local function save_items()
     end
 end
 
+-- 如果玩家脏数据没有保存 很可能在这里没写对应逻辑
 local function save_all_data()
     if data.user and data.user.save then data.user:save() end
     if data.city and data.city.save then data.city:save() end
@@ -111,6 +121,12 @@ local function save_all_data()
     
     if data.buildings then
         for _, v in ipairs(data.buildings) do
+            v:save()
+        end
+    end
+    
+    if data.rect_buildings then
+        for _, v in ipairs(data.rect_buildings) do
             v:save()
         end
     end
@@ -146,134 +162,19 @@ local REQUEST = {}
 local env = {
     REQUEST = REQUEST,
     data = data,
+    sharedata = sharedata,
+    DataWrapper = DataWrapper,
+    skynet = skynet,
+    save_items = save_items,
+    send_package = send_package,
+    get_user_id = function() return user_id end,
+    get_db = function() return db end,
+    get_request = function() return request end,
 }
+
+require("agent.d_login").init(env)
 require("agent.general_handler").init(env)
-
-function REQUEST.login(args)
-    local r_user = data.user and data.user:raw() or { id = 0, username = "unknown" }
-    local r_city = data.city and data.city:raw() or { id = 0, name = "City", level = 1 }
-    
-    local r_items = {}
-    if data.items then
-        for id, amount in pairs(data.items) do
-            table.insert(r_items, {id=id, amount=amount})
-        end
-    end
-    
-    local r_gens = {}
-    for _, v in ipairs(data.generals) do table.insert(r_gens, v:raw()) end
-    
-    local r_builds = {}
-    for _, v in ipairs(data.buildings) do table.insert(r_builds, v:raw()) end
-    
-    return {
-        ok = true,
-        user = r_user,
-        city = r_city,
-        items = r_items,
-        generals = r_gens,
-        buildings = r_builds
-    }
-end
-
-
--- Move logic to agent/general_handler.lua
--- function REQUEST.move_general(args) ... end
-
-function REQUEST.build(args)
-    local type = args.type
-    if not type then return { ok = false } end
-    
-    local x = args.x
-    local y = args.y
-    local region = args.region or 1
-    local now = os.time()
-
-    local s_buildings = sharedata.query("s_buildings")
-    local building_conf = s_buildings[type]
-    
-    if not building_conf then
-        return { ok = false }
-    end
-
-    local costs = {}
-    if building_conf.cost_item > 0 then table.insert(costs, {id=building_conf.cost_item, num=building_conf.cost_num}) end
-    if building_conf.cost_item2 > 0 then table.insert(costs, {id=building_conf.cost_item2, num=building_conf.cost_num2}) end
-    if building_conf.cost_item3 > 0 then table.insert(costs, {id=building_conf.cost_item3, num=building_conf.cost_num3}) end
-
-    for _, c in ipairs(costs) do
-        local current = data.items[c.id] or 0
-        if current < c.num then
-            return { ok = false }
-        end
-    end
-
-    for _, c in ipairs(costs) do
-        data.items[c.id] = data.items[c.id] - c.num
-        -- Items use old immediate update logic in save_items or could be deferred if we wrapped them
-    end
-    save_items() -- Save items immediately for safety or defer? Let's keep it safe for currency.
-
-    -- Push updated items
-    local list = {}
-    for id, amount in pairs(data.items) do
-        table.insert(list, {id=id, amount=amount})
-    end
-    local content = request("push_items", { items = list })
-    send_package(content)
-
-    -- INSERT is still immediate because we need the ID
-    local sql = string.format("INSERT INTO d_buildings (user_id, `type`, level, x, y, begin_build_time, region) VALUES (%d, %d, 1, %d, %d, %d, %d)", 
-        user_id, type, x, y, now, region)
-    local res = db:query(sql)
-    if not res or res.errno then
-        skynet.error("Insert building failed: " .. (res.err or "unknown"))
-        return { ok = false }
-    end
-    
-    local new_building_data = {
-        id = res.insert_id,
-        type = type,
-        level = 1,
-        x = x,
-        y = y,
-        begin_build_time = now,
-        region = region
-    }
-    
-    -- Wrap the new building
-    local wrapper = DataWrapper.new(db, "d_buildings", "id", new_building_data)
-    table.insert(data.buildings, wrapper)
-
-    return {
-        ok = true,
-        building = new_building_data
-    }
-end
-
-function REQUEST.build_move(args)
-    local id = args.id
-    local new_x = args.new_x
-    local new_y = args.new_y
-
-    for _, b in ipairs(data.buildings) do
-        if b.id == id then
-            b.x = new_x -- Triggers dirty
-            b.y = new_y
-            -- No DB update here
-
-            return {
-                ok = true,
-                building = b:raw() -- Ensure we return raw data to Sproto
-            }
-        end
-    end
-    return { ok = false }
-end
-
-function REQUEST.heartbeat(args)
-    return { server_time = os.time() }
-end
+require("agent.d_buildings").init(env)
 
 local function dispatch(type, name, args, response)
     if type == "REQUEST" then

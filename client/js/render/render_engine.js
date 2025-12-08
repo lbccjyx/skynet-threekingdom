@@ -1,4 +1,4 @@
-import { TILE_SIZE, CAMERA_CONFIG, LIGHT_CONFIG, GRID_CONFIG, CITY_BOUNDARY } from './config.js';
+import { TILE_SIZE, CAMERA_CONFIG, LIGHT_CONFIG, GRID_CONFIG, CITY_BOUNDARY } from '../core/config.js';
 
 export const RenderEngine = {
     scene: null,
@@ -129,26 +129,63 @@ export const RenderEngine = {
     },
     
     // 图片渲染为3D对象
-    createEntity: function(id, image, width, height, x, y) {
+    createEntity: function(id, image, width, height, x, y, color = null) {
         if (this.objects[id]) {
             this.updateEntityPosition(id, x, y);
             return this.objects[id];
         }
 
-        const texture = this.loadTexture(image);
-        
-        const material = new THREE.MeshLambertMaterial({ 
-            map: texture, 
-            transparent: true,
-            side: THREE.DoubleSide,
-            alphaTest: 0.1 
-        });
+        let material;
+        if (image) {
+            const texture = this.loadTexture(image);
+            material = new THREE.MeshLambertMaterial({ 
+                map: texture, 
+                transparent: true,
+                side: THREE.DoubleSide,
+                alphaTest: 0.1 
+            });
+        } else {
+            material = new THREE.MeshLambertMaterial({ 
+                color: color || 0x88cc88, 
+                transparent: true,
+                opacity: 0.6,
+                side: THREE.DoubleSide
+            });
+        }
         
         const geometry = new THREE.PlaneGeometry(width, height);
         const mesh = new THREE.Mesh(geometry, material);
         
-        mesh.position.set(x, height / 2, y); 
+        mesh.position.set(x, 1, y); // Lift slightly above 0 to avoid z-fighting with ground if any
         mesh.quaternion.copy(this.camera.quaternion);
+        mesh.userData = { id: id };
+        this.worldGroup.add(mesh);
+        this.objects[id] = mesh;
+        return mesh;
+    },
+
+    // 创建平铺在地面上的实体 (用于圈地)
+    createFlatEntity: function(id, width, height, x, y, color) {
+        if (this.objects[id]) {
+            // For flat entities, we just update x, z (world coords)
+            const obj = this.objects[id];
+            obj.position.x = x;
+            obj.position.z = y;
+            return obj;
+        }
+
+        const material = new THREE.MeshBasicMaterial({ 
+            color: color || 0x88cc88, 
+            transparent: true,
+            opacity: 0.6,
+            side: THREE.DoubleSide
+        });
+
+        const geometry = new THREE.PlaneGeometry(width, height);
+        const mesh = new THREE.Mesh(geometry, material);
+        
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.position.set(x, 0.5, y); 
 
         mesh.userData = { id: id };
         this.worldGroup.add(mesh);
@@ -173,10 +210,19 @@ export const RenderEngine = {
         if (highlight) {
             if (obj.material.emissive) {
                 obj.material.emissive.setHex(0x555555); 
+            } else if (obj.userData.type === 'rect_building') {
+                // Highlighting flat basic material (no emissive)
+                // We can brighten the color or change opacity
+                obj.material.color.setHex(0xffff88); // Brighter yellow/orange
+                obj.material.opacity = 0.9;
             }
         } else {
             if (obj.material.emissive) {
                 obj.material.emissive.setHex(0x000000); 
+            } else if (obj.userData.type === 'rect_building') {
+                // Restore original color
+                obj.material.color.setHex(0xffaa00); 
+                obj.material.opacity = 0.6;
             }
         }
     },

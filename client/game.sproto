@@ -48,6 +48,7 @@ login 1 {
         items 3 : *Item
         generals 4 : *General
         buildings 5 : *Building
+        rect_buildings 6 : *RectBuilding
     }
 }
 
@@ -94,6 +95,54 @@ build_move 5 {
     response {
         ok 0 : boolean
         building 1 : Building
+    }
+}
+
+.RectBuilding {
+    id 0 : integer
+    x 1 : integer
+    y 2 : integer
+    width 3 : integer
+    height 4 : integer
+    region 5 : integer
+}
+
+build_rect 6{
+    request {
+        x 0: integer
+        y 1: integer
+        width 2: integer
+        height 3: integer
+        region 4: integer
+    }
+
+    response {
+        ok 0 : boolean
+        rect_building 1 : RectBuilding
+    }
+}
+
+build_rect_move 7 {
+    request {
+        id 0 : integer
+        x 1 : integer
+        y 2 : integer
+    }
+    
+    response {
+        ok 0 : boolean
+        rect_building 1 : RectBuilding
+    }
+}
+
+build_rect_del 8 {
+    request {
+        id 0 : integer
+    }
+
+    response {
+        ok 0 : boolean
+        id 1 : integer
     }
 }
 

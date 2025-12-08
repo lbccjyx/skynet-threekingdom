@@ -14,7 +14,8 @@ export const Game = {
         city: null,
         items: {}, // id -> amount
         generals: [],
-        buildings: []
+        buildings: [],
+        rect_buildings: []
     },
     selectedBuildingType: null,
     serverTimeOffset: 0,

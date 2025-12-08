@@ -1,6 +1,6 @@
-import { Game } from './state.js';
-import { UI } from './elements.js';
-import { TILE_SIZE, CAMERA_CONFIG, LIGHT_CONFIG, GRID_SIZE } from './config.js';
+import { Game } from '../core/state.js';
+import { UI } from '../ui/elements.js';
+import { TILE_SIZE, CAMERA_CONFIG, LIGHT_CONFIG, GRID_SIZE } from '../core/config.js';
 import { RenderEngine } from './render_engine.js';
 
 // 城内城外视图切换
@@ -67,6 +67,7 @@ export function renderCity() {
             renderBuilding(b);
         });
     }
+    renderRects(1);
 }
 
 // 渲染城外
@@ -96,6 +97,7 @@ export function renderMap() {
              renderBuilding(b);
         });
     }
+    renderRects(2);
 }
 
 // 渲染建筑
@@ -146,5 +148,23 @@ export function removeGhost() {
         if (obj.geometry) obj.geometry.dispose();
         if (obj.material) obj.material.dispose();
         delete RenderEngine.objects[id];
+    }
+}
+
+// 渲染区域 (圈地)
+function renderRects(currentRegion) {
+    if (Game.data.rect_buildings) {
+        Game.data.rect_buildings.forEach(r => {
+            const region = r.region !== undefined ? r.region : 2; 
+            if (region !== currentRegion) return;
+
+            const cx = r.x + r.width / 2;
+            const cy = r.y + r.height / 2;
+            
+            // Orange-ish color for farmland/rects
+            const mesh = RenderEngine.createFlatEntity('rect_' + r.id, r.width, r.height, cx, cy, 0xffaa00);
+            mesh.userData.type = 'rect_building';
+            mesh.userData.data = r;
+        });
     }
 }

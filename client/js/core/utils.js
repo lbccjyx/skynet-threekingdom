@@ -1,4 +1,4 @@
-import { UI } from './elements.js';
+import { UI } from '../ui/elements.js';
 
 export function log(msg) {
     const p = document.createElement('div');

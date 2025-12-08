@@ -1,8 +1,8 @@
 import { Game } from './state.js';
-import { UI } from './elements.js';
+import { UI } from '../ui/elements.js';
 import { log } from './utils.js';
 import { sendRequest } from './api.js';
-import { handlePush, updateGameState } from './logic.js';
+import { handlePush, updateGameState } from '../game/logic.js';
 
 export function connectWS() {
     // Modify wsUrl to match current hostname if needed

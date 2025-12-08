@@ -13,20 +13,13 @@ client/start_server.py 这个脚本执行后是开放8000端口，允许http从c
 client/assets 这里存放了一些图片资源 如果没有相关图片，可以先用文字或者字母代替
 
 ### client/js下的详细说明
-client/js/config.js: 包含 TILE_SIZE 以及 3D 引擎配置 (相机、光照、网格、缩放等)。
-client/js/state.js: Manages the global Game state object.
-client/js/elements.js: References to DOM elements (UI object).
-client/js/utils.js: Utility functions like log.
-client/js/api.js: Handles sending requests (sendRequest).
-client/js/network.js: Manages WebSocket connection and Sproto dispatching.
-client/js/logic.js: Handles game state updates and server pushes.
-client/js/input.js: 管理输入事件 (鼠标点击、拖拽、平移、缩放)。使用 Three.js Raycaster 实现 3D 空间交互。
-client/js/auth.js：专门处理用户登录逻辑。
-client/js/game.js：包含游戏初始化 (startGame) 和核心游戏循环 (startGameLoop)。负责驱动 3D 场景中的进度条更新。
-client/js/main.js： Main entry point, initializes the game and login logic.
-client/index.html: 引入 Three.js 库，添加画布容器，调整 UI 结构。
-client/js/render_engine.js: Three.js 渲染引擎核心封装。负责场景、相机、光照、无限网格、实体管理及坐标转换。
-client/js/render.js: 负责将游戏数据 (地图、城市) 渲染为 3D 实体，调用 RenderEngine 接口。
+client/js/core/: 核心逻辑 ( config.js, state.js, utils.js, api.js, network.js, StaticData.js )
+client/js/game/: 游戏逻辑 ( game.js, logic.js, build_rect.js )
+client/js/render/: 渲染相关 ( render.js, render_engine.js )
+client/js/ui/: 界面与交互 ( auth.js, elements.js )
+client/js/input/: 输入控制 ( input.js, d_build_rect_input.js, d_building_input.js )
+client/js/lib/: 第三方库 ( sproto*.js, three.min.js, test_sproto.js )
+client/js/main.js: 入口文件 (已更新引用)
 
 ### 客户端样式文件
 client/css/style.css

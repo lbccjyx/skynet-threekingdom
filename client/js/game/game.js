@@ -1,7 +1,7 @@
-import { Game } from './state.js';
-import { connectWS } from './network.js';
-import { setupContextMenus, initListeners, initInteractionListeners } from './input.js';
-import { RenderEngine } from './render_engine.js';
+import { Game } from '../core/state.js';
+import { connectWS } from '../core/network.js';
+import { setupContextMenus, initListeners, initInteractionListeners } from '../input/input.js';
+import { RenderEngine } from '../render/render_engine.js';
 
 export async function startGame() {
     // 1. Load Sproto Definition

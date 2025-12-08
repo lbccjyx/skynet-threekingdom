@@ -1,10 +1,13 @@
-import { UI } from './elements.js';
-import { Game } from './state.js';
-import { sendRequest } from './api.js';
-import { log } from './utils.js';
-import { renderCity, renderMap, switchView, createGhost, updateGhost, removeGhost } from './render.js';
-import { ZOOM_MIN, ZOOM_MAX, ZOOM_STEP, CITY_BOUNDARY } from './config.js';
-import { RenderEngine } from './render_engine.js';
+import { UI } from '../ui/elements.js';
+import { Game } from '../core/state.js';
+import { sendRequest } from '../core/api.js';
+import { log } from '../core/utils.js';
+import { renderCity, renderMap, switchView, createGhost, updateGhost, removeGhost } from '../render/render.js';
+import { ZOOM_MIN, ZOOM_MAX, ZOOM_STEP, CITY_BOUNDARY, TILE_SIZE } from '../core/config.js';
+import { RenderEngine } from '../render/render_engine.js';
+import { BuildRect } from '../game/build_rect.js';
+import { BuildRectInput } from './d_build_rect_input.js';
+import { BuildingInput } from './d_building_input.js';
 
 // 设置右键菜单
 export function setupContextMenus() {
@@ -19,6 +22,11 @@ export function setupContextMenus() {
             Game.placementState.def = null;
             RenderEngine.setGridVisibility(false);
             removeGhost();
+            return;
+        }
+
+        if (BuildRect.active) {
+            BuildRect.stop();
             return;
         }
         
@@ -46,34 +54,30 @@ export function setupContextMenus() {
             document.removeEventListener('click', closeMenu);
         };
 
-        const definitions = window.BUILDING_DEFINITIONS || BUILDING_DEFINITIONS;
+        // Check for right click on existing objects (Delete menu)
+        const intersects = RenderEngine.getIntersections(e.clientX, e.clientY);
+        const target = intersects.find(hit => hit.object.userData && (hit.object.userData.type === 'rect_building'));
 
-        for (const key in definitions) {
-            const def = definitions[key];
-            const item = document.createElement('div');
-            item.className = 'context-menu-item';
-            item.textContent = def.name;
-            
-            item.onclick = (e) => {
-                e.stopPropagation();
-                
-                log(`Selected ${def.name}, entering placement mode`);
-
-                Game.placementState.active = true;
-                Game.placementState.def = def;
-                Game.placementState.region = region;
-                // Start ghost at current mouse pos or where click happened
-                Game.placementState.x = buildX;
-                Game.placementState.y = buildY;
-                
-                RenderEngine.setGridVisibility(true);
-                createGhost(def, buildX, buildY);
-
-                menu.remove();
-                document.removeEventListener('click', closeMenu);
-            };
-            menu.appendChild(item);
+        if (BuildRectInput.handleContextMenu(e, target, menu, closeMenu)) {
+             document.body.appendChild(menu);
+             setTimeout(() => document.addEventListener('click', closeMenu), 100);
+             return;
         }
+
+        // Building Placement Menu
+        BuildingInput.handleContextMenu(menu, region, buildX, buildY, closeMenu);
+
+
+        const rectItem = document.createElement('div');
+        rectItem.className = 'context-menu-item';
+        rectItem.textContent = "圈地";
+        rectItem.onclick = (e) => {
+             e.stopPropagation();
+             BuildRect.start();
+             menu.remove();
+             document.removeEventListener('click', closeMenu);
+        };
+        menu.appendChild(rectItem);
         
         document.body.appendChild(menu);
         setTimeout(() => document.addEventListener('click', closeMenu), 100);
@@ -120,6 +124,11 @@ export function initInteractionListeners() {
 
     // 鼠标移动 (悬停, 拖拽, 平移)
     container.addEventListener('mousemove', (e) => {
+        if (BuildRect.active) {
+            BuildRect.onMouseMove(e);
+            return;
+        }
+
         // 1. Handle Camera Panning
         if (RenderEngine.panState.isPanning) {
             e.preventDefault();
@@ -136,14 +145,7 @@ export function initInteractionListeners() {
         const worldPos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
         
         if (Game.placementState.active) {
-            const snapX = Math.floor(worldPos.x);
-            const snapY = Math.floor(worldPos.y);
-            
-            if (snapX !== Game.placementState.x || snapY !== Game.placementState.y) {
-                Game.placementState.x = snapX;
-                Game.placementState.y = snapY;
-                updateGhost(snapX, snapY);
-            }
+            BuildingInput.handlePlacementMouseMove(worldPos);
             return;
         }
 
@@ -167,6 +169,12 @@ export function initInteractionListeners() {
             const id = Game.dragState.id;
             const newX = worldPos.x - Game.dragState.offsetX;
             const newY = worldPos.y - Game.dragState.offsetY;
+
+            if (Game.dragState.type === 'rect_building') {
+                 BuildRectInput.handleDragMove(id, newX, newY);
+                 return;
+            }
+
             RenderEngine.updateEntityPosition(id, newX, newY);
             return;
         }
@@ -174,7 +182,7 @@ export function initInteractionListeners() {
         // 3. 处理悬停 (高亮)
         const intersects = RenderEngine.getIntersections(e.clientX, e.clientY);
         if (intersects.length > 0) {
-            const target = intersects.find(hit => hit.object.userData && (hit.object.userData.type === 'building' || hit.object.userData.type === 'general'));
+            const target = intersects.find(hit => hit.object.userData && (hit.object.userData.type === 'building' || hit.object.userData.type === 'general' || hit.object.userData.type === 'rect_building'));
             
             if (target) {
                 const id = target.object.userData.id;
@@ -224,47 +232,21 @@ export function initInteractionListeners() {
         // 左键 (0) -> 开始拖拽 / 交互
         if (e.button !== 0) return;
 
+        if (BuildRect.active) {
+            BuildRect.onMouseDown(e);
+            return;
+        }
+
         // 如果正在放置建筑
         if (Game.placementState.active) {
-            const { x, y, region, def } = Game.placementState;
-            
-            // Check Boundary
-            if (x < CITY_BOUNDARY.minX || x > CITY_BOUNDARY.maxX || y < CITY_BOUNDARY.minY || y > CITY_BOUNDARY.maxY) {
-                log("Cannot place building outside city boundary!");
-                return;
-            }
-
-            log(`Building ${def.name} at (${x}, ${y})`);
-            
-            sendRequest('build', {
-                type: def.key,
-                x: x,
-                y: y,
-                region: region
-            }, (res) => {
-                if (res.ok) {
-                    log("Building started!");
-                    if (res.building) {
-                        Game.data.buildings.push(res.building);
-                        if (region === 1) renderCity();
-                        else renderMap();
-                    }
-                } else {
-                    log("Build failed");
-                }
-            });
-
-            Game.placementState.active = false;
-            Game.placementState.def = null;
-            RenderEngine.setGridVisibility(false);
-            removeGhost();
+            BuildingInput.handlePlacementMouseDown();
             return;
         }
 
         // 获取鼠标在3D世界中的碰撞点
         const intersects = RenderEngine.getIntersections(e.clientX, e.clientY);
         // 获取碰撞点对应的物体
-        const target = intersects.find(hit => hit.object.userData && (hit.object.userData.type === 'building' || hit.object.userData.type === 'general'));
+        const target = intersects.find(hit => hit.object.userData && (hit.object.userData.type === 'building' || hit.object.userData.type === 'general' || hit.object.userData.type === 'rect_building'));
         
         if (target) {
             // 获取碰撞点对应的物体
@@ -273,6 +255,7 @@ export function initInteractionListeners() {
             const worldPos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
             
             const isGeneral = obj.userData.type === 'general';
+            const isRect = obj.userData.type === 'rect_building';
             
             if (isGeneral) {
                  Game.dragState.isDragging = true;
@@ -289,23 +272,10 @@ export function initInteractionListeners() {
                  RenderEngine.setGridVisibility(true);
                  log(`Started dragging general ${id}`);
                  
+            } else if (isRect) {
+                 BuildRectInput.handleDragStart(id, obj, worldPos);
             } else {
-                // 开始拖拽建筑
-                 Game.dragState.timer = setTimeout(() => {
-                    Game.dragState.isDragging = true;
-                    Game.dragState.id = id;
-                    Game.dragState.type = 'building';
-                    
-                    const objGameX = obj.position.x;
-                    const objGameY = obj.position.z;
-                    
-                    Game.dragState.offsetX = worldPos.x - objGameX;
-                    Game.dragState.offsetY = worldPos.y - objGameY;
-                    
-                    Game.dragState.timer = null;
-                    RenderEngine.setGridVisibility(true);
-                    log(`Started dragging building ${id}`);
-                }, 500);
+                 BuildingInput.handleDragStart(id, obj, worldPos);
             }
         }
     });
@@ -329,6 +299,12 @@ export function initInteractionListeners() {
             const obj = RenderEngine.objects[id];
             
             if (obj) {
+                // Handle Rect Dragging Special Logic (Center vs TopLeft)
+                if (type === 'rect_building') {
+                     BuildRectInput.handleDragEnd(id, obj);
+                     return;
+                }
+
                 const finalX = Math.floor(obj.position.x);
                 const finalY = Math.floor(obj.position.z);
                 
@@ -360,34 +336,31 @@ export function initInteractionListeners() {
                             renderMap();
                         }
                     });
+                     // Clear state for general
+                     Game.dragState.isDragging = false;
+                     Game.dragState.id = null;
+                     Game.dragState.type = null;
+                     RenderEngine.setGridVisibility(false);
                 } else {
-                    const buildId = parseInt(id.replace('build_', ''));
-                     sendRequest('build_move', {
-                        id: buildId,
-                        new_x: finalX,
-                        new_y: finalY
-                    }, (res) => {
-                        if (res.ok) {
-                            const b = Game.data.buildings.find(b => b.id === buildId);
-                            if (b) { b.x = res.building.x; b.y = res.building.y; }
-                            if (Game.currentView === 'city') renderCity();
-                            else renderMap();
-                        } else {
-                            if (Game.currentView === 'city') renderCity();
-                            else renderMap();
-                        }
-                    });
+                    BuildingInput.handleDragEnd(id, obj);
                 }
+            } else {
+                // obj not found, clear state
+                Game.dragState.isDragging = false;
+                Game.dragState.id = null;
+                Game.dragState.type = null;
+                RenderEngine.setGridVisibility(false);
             }
-
-            Game.dragState.isDragging = false;
-            Game.dragState.id = null;
-            Game.dragState.type = null;
-            RenderEngine.setGridVisibility(false);
         }
     };
 
-    container.addEventListener('mouseup', endInteraction);
+    container.addEventListener('mouseup', (e) => {
+        if (BuildRect.active) {
+            BuildRect.onMouseUp(e);
+            return;
+        }
+        endInteraction(e);
+    });
     container.addEventListener('mouseleave', endInteraction);
 
     // 鼠标双击空地，打印坐标

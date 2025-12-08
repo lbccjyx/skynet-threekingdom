@@ -1,6 +1,6 @@
 import { UI } from './elements.js';
-import { Game } from './state.js';
-import { log } from './utils.js';
+import { Game } from '../core/state.js';
+import { log } from '../core/utils.js';
 
 export function setupLogin(onSuccess) {
     UI.btn.login.addEventListener('click', async () => {
