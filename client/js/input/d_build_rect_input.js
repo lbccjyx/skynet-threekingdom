@@ -4,6 +4,7 @@ import { sendRequest } from '../core/api.js';
 import { log } from '../core/utils.js';
 import { renderCity, renderMap } from '../render/render.js';
 import { TILE_SIZE } from '../core/config.js';
+import { BuildRect } from '../game/build_rect.js';
 
 export const BuildRectInput = {
     // Handle context menu for Rect Building
@@ -55,6 +56,13 @@ export const BuildRectInput = {
         Game.dragState.offsetX = worldPos.x - cx;
         Game.dragState.offsetY = worldPos.y - cy;
         
+        // Show Ghost
+        const w = obj.geometry.parameters.width;
+        const h = obj.geometry.parameters.height;
+        const tlX = cx - w / 2;
+        const tlY = cy - h / 2;
+        BuildRect.updateGhost(tlX, tlY, w, h);
+        
         RenderEngine.setGridVisibility(true);
         log(`Started dragging rect ${id}`);
     },
@@ -74,30 +82,38 @@ export const BuildRectInput = {
              tlX = Math.round(tlX / TILE_SIZE) * TILE_SIZE;
              tlY = Math.round(tlY / TILE_SIZE) * TILE_SIZE;
 
-             // Recalculate Center
-             const snappedCX = tlX + w / 2;
-             const snappedCY = tlY + h / 2;
+             // Update Ghost
+             BuildRect.updateGhost(tlX, tlY, w, h);
              
-             RenderEngine.updateEntityPosition(id, snappedCX, snappedCY);
+             // Store for DragEnd
+             Game.dragState.lastRectX = tlX;
+             Game.dragState.lastRectY = tlY;
          }
     },
 
     // Handle Drag End
     handleDragEnd: function(id, obj) {
-         // Get current center
-         const cx = obj.position.x;
-         const cy = obj.position.z;
          const w = obj.geometry.parameters.width;
          const h = obj.geometry.parameters.height;
          
-         // Calculate TopLeft
-         let tlX = cx - w / 2;
-         let tlY = cy - h / 2;
-         
-         // Snap TopLeft to TILE_SIZE
-         tlX = Math.round(tlX / TILE_SIZE) * TILE_SIZE;
-         tlY = Math.round(tlY / TILE_SIZE) * TILE_SIZE;
-         
+         let tlX, tlY;
+
+         if (Game.dragState.lastRectX !== undefined) {
+             tlX = Game.dragState.lastRectX;
+             tlY = Game.dragState.lastRectY;
+             delete Game.dragState.lastRectX;
+             delete Game.dragState.lastRectY;
+         } else {
+             const cx = obj.position.x;
+             const cy = obj.position.z;
+             tlX = cx - w / 2;
+             tlY = cy - h / 2;
+             tlX = Math.round(tlX / TILE_SIZE) * TILE_SIZE;
+             tlY = Math.round(tlY / TILE_SIZE) * TILE_SIZE;
+         }
+
+         BuildRect.clearGhost();
+
          const finalId = parseInt(id.replace('rect_', ''));
 
          sendRequest('build_rect_move', {

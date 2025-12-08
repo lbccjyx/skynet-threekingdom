@@ -19,12 +19,7 @@ export const BuildRect = {
     stop: function() {
         this.active = false;
         this.startPos = null;
-        if (this.currentRect) {
-            RenderEngine.worldGroup.remove(this.currentRect);
-            if (this.currentRect.geometry) this.currentRect.geometry.dispose();
-            if (this.currentRect.material) this.currentRect.material.dispose();
-            this.currentRect = null;
-        }
+        this.clearGhost();
         RenderEngine.setGridVisibility(false);
         log("退出圈地模式");
     },
@@ -127,8 +122,12 @@ export const BuildRect = {
         const width = maxX - minX;
         const height = maxY - minY;
 
-        const centerX = minX + width / 2;
-        const centerY = minY + height / 2;
+        this.updateGhost(minX, minY, width, height);
+    },
+
+    updateGhost: function(x, y, width, height) {
+        const centerX = x + width / 2;
+        const centerY = y + height / 2;
 
         if (!this.currentRect) {
              const geometry = new THREE.PlaneGeometry(1, 1);
@@ -146,6 +145,15 @@ export const BuildRect = {
 
         this.currentRect.scale.set(width, height, 1);
         this.currentRect.position.set(centerX, 1, centerY);
+    },
+
+    clearGhost: function() {
+        if (this.currentRect) {
+            RenderEngine.worldGroup.remove(this.currentRect);
+            if (this.currentRect.geometry) this.currentRect.geometry.dispose();
+            if (this.currentRect.material) this.currentRect.material.dispose();
+            this.currentRect = null;
+        }
     }
 };
 
