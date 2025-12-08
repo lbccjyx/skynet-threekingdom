@@ -173,6 +173,9 @@ export function initInteractionListeners() {
             if (Game.dragState.type === 'rect_building') {
                  BuildRectInput.handleDragMove(id, newX, newY);
                  return;
+            } else if (Game.dragState.type === 'building') {
+                 BuildingInput.handleDragMove(id, newX, newY);
+                 return;
             }
 
             RenderEngine.updateEntityPosition(id, newX, newY);
@@ -302,6 +305,12 @@ export function initInteractionListeners() {
                 // Handle Rect Dragging Special Logic (Center vs TopLeft)
                 if (type === 'rect_building') {
                      BuildRectInput.handleDragEnd(id, obj);
+                     return;
+                }
+
+                // Handle Building Dragging Special Logic (Ghost based)
+                if (type === 'building') {
+                     BuildingInput.handleDragEnd(id, obj);
                      return;
                 }
 

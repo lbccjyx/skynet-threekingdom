@@ -197,8 +197,11 @@ export const RenderEngine = {
     updateEntityPosition: function(id, x, y) {
         const obj = this.objects[id];
         if (obj) {
-             const height = obj.geometry.parameters.height;
-             obj.position.set(x, height / 2, y);
+             // Keep y consistent with createEntity (y=1)
+             // Using height/2 would lift the object center, which might be wrong if pivot is center
+             // and we want it "on the ground".
+             // However, createEntity puts it at y=1.
+             obj.position.set(x, 1, y);
         }
     },
     

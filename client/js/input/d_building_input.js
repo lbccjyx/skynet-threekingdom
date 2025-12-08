@@ -4,6 +4,7 @@ import { sendRequest } from '../core/api.js';
 import { log } from '../core/utils.js';
 import { renderCity, renderMap, createGhost, updateGhost, removeGhost } from '../render/render.js';
 import { CITY_BOUNDARY } from '../core/config.js';
+import { TILE_SIZE } from '../core/config.js';
 
 export const BuildingInput = {
     // Handle Context Menu for Building Placement
@@ -88,39 +89,85 @@ export const BuildingInput = {
 
     // Handle Drag Start
     handleDragStart: function(id, obj, worldPos) {
-        // Start dragging building with delay (from original code)
-         Game.dragState.timer = setTimeout(() => {
-            Game.dragState.isDragging = true;
-            Game.dragState.id = id;
-            Game.dragState.type = 'building';
-            
-            const objGameX = obj.position.x;
-            const objGameY = obj.position.z;
-            
-            Game.dragState.offsetX = worldPos.x - objGameX;
-            Game.dragState.offsetY = worldPos.y - objGameY;
-            
-            Game.dragState.timer = null;
-            RenderEngine.setGridVisibility(true);
-            log(`Started dragging building ${id}`);
-        }, 500);
+        // Start dragging building
+        Game.dragState.isDragging = true;
+        Game.dragState.id = id;
+        Game.dragState.type = 'building';
+        
+        const objGameX = obj.position.x;
+        const objGameY = obj.position.z;
+        
+        // Use defined width/height or fallback from geometry
+        const def = obj.userData.def || { width: 1, height: 1 };
+        Game.dragState.def = def;
+        
+        Game.dragState.offsetX = worldPos.x - objGameX;
+        Game.dragState.offsetY = worldPos.y - objGameY;
+        
+        // Initialize Ghost at current position
+        createGhost(def, objGameX, objGameY);
+        
+        RenderEngine.setGridVisibility(true);
+        log(`Started dragging building ${id}`);
+    },
+
+    // Handle Drag Move
+    handleDragMove: function(id, newX, newY) {
+         // This function is called from input.js with (worldPos.x - offset) as newX/Y
+         // These are the proposed Center coordinates.
+         
+         const def = Game.dragState.def;
+         if (!def) return;
+
+         const w = def.width * TILE_SIZE;
+         const h = def.height * TILE_SIZE;
+         
+         // Calculate proposed TopLeft
+         let tlX = newX - w / 2;
+         let tlY = newY - h / 2;
+
+         // Snap TopLeft to Grid
+         tlX = Math.round(tlX / TILE_SIZE) * TILE_SIZE;
+         tlY = Math.round(tlY / TILE_SIZE) * TILE_SIZE;
+
+         // Recalculate Snapped Center
+         const snappedCX = tlX + w / 2;
+         const snappedCY = tlY + h / 2;
+         
+         // Update Ghost
+         updateGhost(snappedCX, snappedCY);
+         
+         // Store for DragEnd
+         Game.dragState.lastBuildingX = snappedCX;
+         Game.dragState.lastBuildingY = snappedCY;
     },
 
     // Handle Drag End
     handleDragEnd: function(id, obj) {
-        const finalX = Math.floor(obj.position.x);
-        const finalY = Math.floor(obj.position.z);
+        let finalX, finalY;
+        
+        if (Game.dragState.lastBuildingX !== undefined) {
+             finalX = Game.dragState.lastBuildingX;
+             finalY = Game.dragState.lastBuildingY;
+             delete Game.dragState.lastBuildingX;
+             delete Game.dragState.lastBuildingY;
+        } else {
+             // If no move happened
+             finalX = obj.position.x;
+             finalY = obj.position.z;
+        }
         
         // Check Boundary
         if (Game.currentView === 'city') {
+             // Boundary check needs to consider building size
+             // But simple check for center point might be enough or check corners
              if (finalX < CITY_BOUNDARY.minX || finalX > CITY_BOUNDARY.maxX || finalY < CITY_BOUNDARY.minY || finalY > CITY_BOUNDARY.maxY) {
                   log("Cannot move outside city boundary!");
-                  if (Game.currentView === 'city') renderCity();
-                  else renderMap();
-                  
+                  removeGhost();
                   Game.dragState.isDragging = false;
                   Game.dragState.id = null;
                   Game.dragState.type = null;
+                  Game.dragState.def = null;
                   RenderEngine.setGridVisibility(false);
                   return;
              }
@@ -129,6 +176,8 @@ export const BuildingInput = {
         log(`Moved building ${id} to (${finalX}, ${finalY})`);
 
         const buildId = parseInt(id.replace('build_', ''));
+        
+        // Send request with new Center coordinates
          sendRequest('build_move', {
             id: buildId,
             new_x: finalX,
@@ -145,9 +194,11 @@ export const BuildingInput = {
             }
         });
 
+        removeGhost();
         Game.dragState.isDragging = false;
         Game.dragState.id = null;
         Game.dragState.type = null;
+        Game.dragState.def = null;
         RenderEngine.setGridVisibility(false);
     }
 };

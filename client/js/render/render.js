@@ -125,10 +125,13 @@ export function createGhost(def, x, y) {
     
     const mesh = RenderEngine.createEntity(id, image, width, height, x, y);
     
+    mesh.renderOrder = 20; // Ensure it's drawn on top of normal buildings (order 10)
+
     if (mesh.material) {
         mesh.material.opacity = 0.6;
         mesh.material.transparent = true;
         mesh.material.color.setHex(0x99ff99); // Light green tint
+        mesh.material.depthWrite = false; // Prevent ghost from occluding things behind it in depth buffer
     }
     
     return mesh;
