@@ -176,7 +176,7 @@ export const RenderEngine = {
         }
 
         const group = new THREE.Group();
-        group.position.set(x, 0, y);
+        group.position.set(x, -13, y);
         group.userData = { id: id, width: width, height: height };
 
         // Calculate grid dimensions
@@ -222,14 +222,14 @@ export const RenderEngine = {
                         group.add(clone);
                     } else {
                         // Placeholder
-                        const geo = new THREE.BoxGeometry(TILE_SIZE - 2, 10, TILE_SIZE - 2);
+                        const geo = new THREE.BoxGeometry(TILE_SIZE - 2, 0, TILE_SIZE - 2);
                         const mat = new THREE.MeshLambertMaterial({ 
                             color: color || 0x88cc88, 
                             transparent: true, 
                             opacity: 0.6 
                         });
                         const mesh = new THREE.Mesh(geo, mat);
-                        mesh.position.set(tx, 5, tz);
+                        mesh.position.set(tx, 0, tz);
                         group.add(mesh);
                     }
                 }
@@ -252,24 +252,8 @@ export const RenderEngine = {
                             
                             // 遍历模型中的所有 Mesh，增强材质亮度
                             this.modelCache.traverse((child) => {
-                                if (child.isMesh) {
-                                    // 检查材质是否存在
-                                    if (child.material) {
-                                        // 克隆材质以避免影响共享材质的其他物体
-                                        child.material = child.material.clone();
-                                        
-                                        // 增加自发光 (Emissive)
-                                        // 使用暖色调模拟阳光照射下的小麦，或者用白色提升整体亮度
-                                        child.material.emissive = new THREE.Color(0x333333); 
-                                        child.material.emissiveIntensity = 0.8;
-
-                                        // 如果材质支持，提升环境光强度
-                                        if (child.material.envMapIntensity !== undefined) {
-                                            child.material.envMapIntensity = 1.5;
-                                        }
-                                        // 也可以直接调整颜色的亮度 (Multiply)
-                                        child.material.color.multiplyScalar(1.5); 
-                                    }
+                                if (child.isMesh && child.material) {
+                                    child.material.color.multiplyScalar(5); 
                                 }
                             });
 
