@@ -9,6 +9,8 @@ export const RenderEngine = {
     objects: {}, // Map of ID -> Three.js Object
     worldGroup: null, // Group for all game entities
     gridHelper: null, // Reference to grid
+    modelCache: null,
+    loadingModelPromise: null,
     
     // Pan State
     panState: {
@@ -167,30 +169,129 @@ export const RenderEngine = {
     // 创建平铺在地面上的实体 (用于圈地)
     createFlatEntity: function(id, width, height, x, y, color) {
         if (this.objects[id]) {
-            // For flat entities, we just update x, z (world coords)
             const obj = this.objects[id];
             obj.position.x = x;
             obj.position.z = y;
             return obj;
         }
 
-        const material = new THREE.MeshBasicMaterial({ 
-            color: color || 0x88cc88, 
-            transparent: true,
-            opacity: 0.6,
-            side: THREE.DoubleSide
-        });
+        const group = new THREE.Group();
+        group.position.set(x, 0, y);
+        group.userData = { id: id, width: width, height: height };
 
-        const geometry = new THREE.PlaneGeometry(width, height);
-        const mesh = new THREE.Mesh(geometry, material);
+        // Calculate grid dimensions
+        const cols = Math.round(width / TILE_SIZE);
+        const rows = Math.round(height / TILE_SIZE);
         
-        mesh.rotation.x = -Math.PI / 2;
-        mesh.position.set(x, 0.5, y); 
+        // Helper to populate group
+        const populate = (modelToClone) => {
+            // Remove existing children (placeholders or old models)
+            while(group.children.length > 0){ 
+                group.remove(group.children[0]); 
+            }
 
-        mesh.userData = { id: id };
-        this.worldGroup.add(mesh);
-        this.objects[id] = mesh;
-        return mesh;
+            const startX = -width / 2;
+            const startZ = -height / 2;
+
+            // Compute scale once
+            let scaleX = 1, scaleY = 1, scaleZ = 1;
+            let liftY = 0;
+
+            if (modelToClone) {
+                 const box = new THREE.Box3().setFromObject(modelToClone);
+                 const size = box.getSize(new THREE.Vector3());
+                 if (size.x > 0 && size.z > 0) {
+                     scaleX = TILE_SIZE / size.x;
+                     scaleZ = TILE_SIZE / size.z;
+                     // Optional: Scale Y to match tile size or keep aspect ratio?
+                     // Let's keep aspect ratio for height roughly, or just fit to TILE_SIZE
+                     scaleY = TILE_SIZE / size.x; 
+                 }
+                 liftY = (size.y * scaleY) / 2;
+            }
+
+            for (let c = 0; c < cols; c++) {
+                for (let r = 0; r < rows; r++) {
+                    const tx = startX + c * TILE_SIZE + TILE_SIZE / 2;
+                    const tz = startZ + r * TILE_SIZE + TILE_SIZE / 2;
+                    
+                    if (modelToClone) {
+                        const clone = modelToClone.clone();
+                        clone.scale.set(scaleX, scaleY, scaleZ);
+                        clone.position.set(tx, liftY, tz);
+                        group.add(clone);
+                    } else {
+                        // Placeholder
+                        const geo = new THREE.BoxGeometry(TILE_SIZE - 2, 10, TILE_SIZE - 2);
+                        const mat = new THREE.MeshLambertMaterial({ 
+                            color: color || 0x88cc88, 
+                            transparent: true, 
+                            opacity: 0.6 
+                        });
+                        const mesh = new THREE.Mesh(geo, mat);
+                        mesh.position.set(tx, 5, tz);
+                        group.add(mesh);
+                    }
+                }
+            }
+        };
+
+        // Initial Placeholder
+        populate(null);
+
+        // Load Model
+        if (this.modelCache) {
+            populate(this.modelCache);
+        } else {
+            if (typeof THREE.GLTFLoader !== 'undefined') {
+                if (!this.loadingModelPromise) {
+                    const loader = new THREE.GLTFLoader();
+                    this.loadingModelPromise = new Promise((resolve) => {
+                        loader.load('assets/123.glb', (gltf) => {
+                            this.modelCache = gltf.scene;
+                            
+                            // 遍历模型中的所有 Mesh，增强材质亮度
+                            this.modelCache.traverse((child) => {
+                                if (child.isMesh) {
+                                    // 检查材质是否存在
+                                    if (child.material) {
+                                        // 克隆材质以避免影响共享材质的其他物体
+                                        child.material = child.material.clone();
+                                        
+                                        // 增加自发光 (Emissive)
+                                        // 使用暖色调模拟阳光照射下的小麦，或者用白色提升整体亮度
+                                        child.material.emissive = new THREE.Color(0x333333); 
+                                        child.material.emissiveIntensity = 0.8;
+
+                                        // 如果材质支持，提升环境光强度
+                                        if (child.material.envMapIntensity !== undefined) {
+                                            child.material.envMapIntensity = 1.5;
+                                        }
+                                        // 也可以直接调整颜色的亮度 (Multiply)
+                                        child.material.color.multiplyScalar(1.5); 
+                                    }
+                                }
+                            });
+
+                            resolve(gltf.scene);
+                        }, undefined, (err) => {
+                            console.error('Error loading model', err);
+                            resolve(null);
+                        });
+                    });
+                }
+                
+                this.loadingModelPromise.then(model => {
+                    if (model && this.objects[id] === group) { // Only update if group still exists
+                        populate(model);
+                    }
+                });
+            }
+        }
+
+        this.worldGroup.add(group);
+        this.objects[id] = group;
+        return group;
     },
 
     // 更新建筑的位置
@@ -210,23 +311,37 @@ export const RenderEngine = {
         const obj = this.objects[id];
         if (!obj) return;
         
-        if (highlight) {
-            if (obj.material.emissive) {
-                obj.material.emissive.setHex(0x555555); 
-            } else if (obj.userData.type === 'rect_building') {
-                // Highlighting flat basic material (no emissive)
-                // We can brighten the color or change opacity
-                obj.material.color.setHex(0xffff88); // Brighter yellow/orange
-                obj.material.opacity = 0.9;
+        const applyHighlight = (mesh) => {
+            if (!mesh.material) return;
+            if (highlight) {
+                if (mesh.material.emissive) {
+                    mesh.material.emissive.setHex(0x555555);
+                } else {
+                    if (mesh.userData.originalColor === undefined) {
+                         mesh.userData.originalColor = mesh.material.color.getHex();
+                         mesh.userData.originalOpacity = mesh.material.opacity;
+                    }
+                    mesh.material.color.setHex(0xffff88);
+                    mesh.material.opacity = 0.9;
+                }
+            } else {
+                if (mesh.material.emissive) {
+                    mesh.material.emissive.setHex(0x000000);
+                } else {
+                    if (mesh.userData.originalColor !== undefined) {
+                        mesh.material.color.setHex(mesh.userData.originalColor);
+                        mesh.material.opacity = mesh.userData.originalOpacity;
+                    }
+                }
             }
+        };
+
+        if (obj.isGroup) {
+            obj.traverse((child) => {
+                if (child.isMesh) applyHighlight(child);
+            });
         } else {
-            if (obj.material.emissive) {
-                obj.material.emissive.setHex(0x000000); 
-            } else if (obj.userData.type === 'rect_building') {
-                // Restore original color
-                obj.material.color.setHex(0xffaa00); 
-                obj.material.opacity = 0.6;
-            }
+            applyHighlight(obj);
         }
     },
     
