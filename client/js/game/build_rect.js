@@ -9,10 +9,13 @@ export const BuildRect = {
     active: false,
     startPos: null, // {x, y}
     currentRect: null, // THREE.Mesh
+    type: 0,
 
+    // def == RECT_BUILDING_DEFINITIONS中的某条数据
     start: function(def) {
         this.active = true;
         this.currentDef = def;
+        this.type = def ? def.key : 0;
         RenderEngine.setGridVisibility(true);
         const name = def ? def.name : 'Unknown';
         log(`进入圈地模式: ${name} (左键拖拽选择区域，右键取消)`);
@@ -78,7 +81,6 @@ export const BuildRect = {
         const height = maxY - minY;
 
         const region = Game.currentView === 'city' ? 1 : 2;
-        const type = this.currentDef ? this.currentDef.key : 1;
 
         // Send request
         sendRequest('build_rect', {
@@ -87,7 +89,7 @@ export const BuildRect = {
             width: width,
             height: height,
             region: region,
-            type: type
+            type: this.type
         }, (res) => {
             if (res.ok) {
                 log("圈地成功!");

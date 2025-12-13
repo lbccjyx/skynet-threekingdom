@@ -123,7 +123,8 @@ export const GameToolbar = {
 
     selectBuilding: function(def) {
         this.closeAllMenus();
-        log(`Selected ${def.name}`);
+        BuildingType = def.key;
+        log(`Selected ${def.name} BuildingType: ${BuildingType}`);
         
         if (Game.placementState.active) {
             removeGhost();
@@ -142,6 +143,7 @@ export const GameToolbar = {
         createGhost(def, 0, 0);
     },
 
+    // def == RECT_BUILDING_DEFINITIONS中的某条数据
     selectZoning: function(def) {
         this.closeAllMenus();
         log(`Selected Zoning: ${def.name}`);
@@ -193,6 +195,7 @@ export const GameToolbar = {
         if (!this.deleteMode) return false;
         
         const type = object.userData.type;
+        log(`type: ${type}`);
         const data = object.userData.data;
         if (!data) return false;
 

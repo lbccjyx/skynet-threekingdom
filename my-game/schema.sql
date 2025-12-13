@@ -97,6 +97,12 @@ CREATE TABLE `s_house_population` (
   UNIQUE KEY `idx_type_lev` (`type`, `level`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+DROP TABLE IF EXISTS s_rect_building;
+CREATE TABLE `s_rect_building` (
+  `type` int NOT NULL PRIMARY KEY,
+  `name` varchar(32) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 DROP TABLE IF EXISTS d_rect_building;
 CREATE TABLE d_rect_building (
     id INT AUTO_INCREMENT PRIMARY KEY,
