@@ -2,8 +2,7 @@ import { UI } from '../ui/elements.js';
 import { Game } from '../core/state.js';
 import { sendRequest } from '../core/api.js';
 import { log } from '../core/utils.js';
-import { renderCity, renderMap, switchView, createGhost, updateGhost, removeGhost } from '../render/render.js';
-import { ZOOM_MIN, ZOOM_MAX, ZOOM_STEP, CITY_BOUNDARY, TILE_SIZE } from '../core/config.js';
+import { renderCity, renderMap, switchView, removeGhost } from '../render/render.js';
 import { RenderEngine } from '../render/render_engine.js';
 import { BuildRect } from '../game/build_rect.js';
 import { BuildRectInput } from './d_build_rect_input.js';
@@ -318,7 +317,7 @@ export function initInteractionListeners() {
                 
                 // Check Boundary
                 if (Game.currentView === 'city') {
-                     if (finalX < CITY_BOUNDARY.minX || finalX > CITY_BOUNDARY.maxX || finalY < CITY_BOUNDARY.minY || finalY > CITY_BOUNDARY.maxY) {
+                     if (!BuildingInput.IsPosUseful(finalX, finalY)) {
                           log("Cannot move outside city boundary!");
                           if (Game.currentView === 'city') renderCity();
                           else renderMap();

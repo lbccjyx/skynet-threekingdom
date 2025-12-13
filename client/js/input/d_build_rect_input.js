@@ -5,7 +5,6 @@ import { log } from '../core/utils.js';
 import { renderCity, renderMap } from '../render/render.js';
 import { TILE_SIZE } from '../core/config.js';
 import { BuildRect } from '../game/build_rect.js';
-import { CITY_BOUNDARY } from '../core/config.js';
 
 
 export const BuildRectInput = {
@@ -114,20 +113,18 @@ export const BuildRectInput = {
              tlY = Math.round(tlY / TILE_SIZE) * TILE_SIZE;
          }
 
+         BuildRect.clearGhost();
+
         // Check Boundary
          if (!BuildRect.IsRectPosUseful(tlX, tlY, w, h)) {
             log("Cannot move outside city boundary!");
-            BuildRect.clearGhost();
             Game.dragState.isDragging = false;
             Game.dragState.id = null;
             Game.dragState.type = null;
             Game.dragState.def = null;
             RenderEngine.setGridVisibility(false);
-            BuildRect.clearGhost();
             return;
          }
-
-         BuildRect.clearGhost();
 
          const finalId = parseInt(id.replace('rect_', ''));
 

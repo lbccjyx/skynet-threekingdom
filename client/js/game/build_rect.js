@@ -63,11 +63,12 @@ export const BuildRect = {
 
     IsRectPosUseful: function(tlX, tlY, width, length) {
         if (Game.currentView === 'city') {
-            if (tlX < CITY_BOUNDARY.minX || tlX > CITY_BOUNDARY.maxX || tlY < CITY_BOUNDARY.minY || tlY > CITY_BOUNDARY.maxY
-                || tlX + width > CITY_BOUNDARY.maxX || tlY + length > CITY_BOUNDARY.maxY
-                || tlX + width < CITY_BOUNDARY.minX || tlY + length < CITY_BOUNDARY.minY
-            )
-            return false;
+            if (tlX < CITY_BOUNDARY.minX || 
+                tlX + width > CITY_BOUNDARY.maxX || 
+                tlY < CITY_BOUNDARY.minY || 
+                tlY + length > CITY_BOUNDARY.maxY) {
+                return false;
+            }
         }
         return true;
     },
@@ -92,7 +93,7 @@ export const BuildRect = {
         const width = maxX - minX;
         const height = maxY - minY;
 
-        if (!this.IsRectPosUseful(startX, startY, width, height)) {
+        if (!this.IsRectPosUseful(minX, minY, width, height)) {
             log("Cannot build outside city boundary!");
             this.stop();
             return;

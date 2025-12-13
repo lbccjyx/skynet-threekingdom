@@ -215,8 +215,18 @@ export const GameToolbar = {
             sendRequest('build_rect_del', { id: realId }, (res) => {
                 if (res.ok) {
                     log("圈地已删除");
-                        Game.data.rect_buildings = Game.data.rect_buildings.filter(r => r.id !== realId);
-                        if (Game.currentView === 'city') renderCity(); else renderMap();
+
+                    // Remove highlight before deleting, as materials might be shared across instances
+                    const objId = 'rect_' + realId;
+                    RenderEngine.setHighlight(objId, false);
+                    if (Game.hoveredBuildingId === objId) {
+                        Game.hoveredBuildingId = null;
+                    }
+
+                    Game.data.rect_buildings = Game.data.rect_buildings.filter(r => r.id !== realId);
+                    if (Game.currentView === 'city') renderCity(); else renderMap();
+                    
+                    RenderEngine.setGridVisibility(false);
                 } else {
                     log("删除失败");
                 }

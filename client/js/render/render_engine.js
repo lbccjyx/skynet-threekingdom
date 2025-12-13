@@ -500,7 +500,7 @@ export const RenderEngine = {
         // Vertical lines (along Z)
         for (let x = -halfSize; x <= halfSize; x += step) {
              // If x is outside boundary X range, whole line is red
-             if (x < minX || x > maxX) {
+             if (x <= minX || x >= maxX) {
                  addLine(x, 0, -halfSize, x, 0, halfSize, true);
              } else {
                  // Split into 3 segments
@@ -520,7 +520,7 @@ export const RenderEngine = {
         // Horizontal lines (along X)
         for (let z = -halfSize; z <= halfSize; z += step) {
             // If z is outside boundary Y range, whole line is red
-            if (z < minY || z > maxY) {
+            if (z <= minY || z >= maxY) {
                 addLine(-halfSize, 0, z, halfSize, 0, z, true);
             } else {
                 // Split into 3 segments
