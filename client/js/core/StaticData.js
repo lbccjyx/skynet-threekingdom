@@ -16,8 +16,9 @@ BUILDING_DEFINITIONS = {
 };
 
 RECT_BUILDING_DEFINITIONS = {
-    1: {key: 1, name: '农田', image: 'assets/glb_file/farm.glb'},
-    2: {key: 2, name: '道路', image: 'assets/glb_file/road.glb'}
+    1: {key: 1, name: '农田', image: 'assets/glb_file/farmland.glb'},
+    2: {key: 2, name: '道路', image: 'assets/glb_file/road.glb'},
+    3: {key: 3, name: '城墙', image: 'assets/glb_file/wall.glb'}
 };
 
 TOOLBAR_CONFIG = [

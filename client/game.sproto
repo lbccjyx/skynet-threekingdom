@@ -105,6 +105,7 @@ build_move 5 {
     width 3 : integer
     height 4 : integer
     region 5 : integer
+    type 6 : integer
 }
 
 build_rect 6{

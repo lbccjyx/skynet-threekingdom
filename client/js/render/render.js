@@ -2,6 +2,7 @@ import { Game } from '../core/state.js';
 import { UI } from '../ui/elements.js';
 import { TILE_SIZE, CAMERA_CONFIG, LIGHT_CONFIG, GRID_SIZE } from '../core/config.js';
 import { RenderEngine } from './render_engine.js';
+import { log } from '../core/utils.js';
 
 // 城内城外视图切换
 export function switchView(viewName) {
@@ -53,7 +54,7 @@ export function updateResourcesUI() {
 export function renderCity() {
     RenderEngine.clearWorld();
     
-    const bgMesh = RenderEngine.createEntity('city_bg', 'assets/chengqiang.png', TILE_SIZE*40, TILE_SIZE*50, 0, 0);
+    const bgMesh = RenderEngine.createEntity('city_bg', 'assets/background.png', TILE_SIZE*40, TILE_SIZE*50, 0, 0);
     bgMesh.position.set(0, -50, 0); // Put it well below everything to avoid interference
     bgMesh.quaternion.set(0, 0, 0, 1); 
     bgMesh.rotation.set(-Math.PI / 2, 0, Math.PI / 4);
@@ -164,11 +165,10 @@ function renderRects(currentRegion) {
             const cx = r.x + r.width / 2;
             const cy = r.y + r.height / 2;
             
-            // Orange-ish color for farmland/rects
+            // Orange-ish color for farmland/rects 
             const definitions = window.RECT_BUILDING_DEFINITIONS || {};
-            const def = definitions[r.type] || { image: 'assets/glb_file/tower.glb' };
 
-            const mesh = RenderEngine.createFlatEntity('rect_' + r.id, r.width, r.height, cx, cy, def.image);
+            const mesh = RenderEngine.createFlatEntity('rect_' + r.id, r.width, r.height, cx, cy, r.type, definitions[r.type].image);
             mesh.userData.type = 'rect_building';
             mesh.userData.data = r;
         });
