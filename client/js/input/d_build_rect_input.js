@@ -115,27 +115,17 @@ export const BuildRectInput = {
          }
 
         // Check Boundary
-        if (Game.currentView === 'city') {
-            // Boundary check needs to consider building size
-            // But simple check for center point might be enough or check corners
-            if (tlX < CITY_BOUNDARY.minX || tlX > CITY_BOUNDARY.maxX || tlY < CITY_BOUNDARY.minY || tlY > CITY_BOUNDARY.maxY
-                || tlX + w > CITY_BOUNDARY.maxX || tlY + h > CITY_BOUNDARY.maxY
-                || tlX + w < CITY_BOUNDARY.minX || tlY + h < CITY_BOUNDARY.minY
-                || tlX < CITY_BOUNDARY.minX || tlX > CITY_BOUNDARY.maxX || tlY < CITY_BOUNDARY.minY || tlY > CITY_BOUNDARY.maxY
-                || tlX + w > CITY_BOUNDARY.maxX || tlY + h > CITY_BOUNDARY.maxY
-                || tlX + w < CITY_BOUNDARY.minX || tlY + h < CITY_BOUNDARY.minY
-            ) {
-                log("Cannot move outside city boundary!");
-                removeGhost();
-                Game.dragState.isDragging = false;
-                Game.dragState.id = null;
-                Game.dragState.type = null;
-                Game.dragState.def = null;
-                RenderEngine.setGridVisibility(false);
-                BuildRect.clearGhost();
-                return;
-            }
-        }
+         if (!BuildRect.IsRectPosUseful(tlX, tlY, w, h)) {
+            log("Cannot move outside city boundary!");
+            BuildRect.clearGhost();
+            Game.dragState.isDragging = false;
+            Game.dragState.id = null;
+            Game.dragState.type = null;
+            Game.dragState.def = null;
+            RenderEngine.setGridVisibility(false);
+            BuildRect.clearGhost();
+            return;
+         }
 
          BuildRect.clearGhost();
 

@@ -2,7 +2,7 @@ import { Game } from '../core/state.js';
 import { RenderEngine } from '../render/render_engine.js';
 import { log } from '../core/utils.js';
 import { sendRequest } from '../core/api.js';
-import { TILE_SIZE } from '../core/config.js';
+import { TILE_SIZE, CITY_BOUNDARY } from '../core/config.js';
 import { renderMap, renderCity } from '../render/render.js';
 
 export const BuildRect = {
@@ -61,6 +61,17 @@ export const BuildRect = {
         this.updateRect(cx, cy);
     },
 
+    IsRectPosUseful: function(tlX, tlY, width, length) {
+        if (Game.currentView === 'city') {
+            if (tlX < CITY_BOUNDARY.minX || tlX > CITY_BOUNDARY.maxX || tlY < CITY_BOUNDARY.minY || tlY > CITY_BOUNDARY.maxY
+                || tlX + width > CITY_BOUNDARY.maxX || tlY + length > CITY_BOUNDARY.maxY
+                || tlX + width < CITY_BOUNDARY.minX || tlY + length < CITY_BOUNDARY.minY
+            )
+            return false;
+        }
+        return true;
+    },
+
     onMouseUp: function(e) {
         if (!this.active || !this.startPos) return;
 
@@ -71,6 +82,7 @@ export const BuildRect = {
         const startX = this.startPos.x;
         const startY = this.startPos.y;
 
+
         // Union of start tile and end tile
         let minX = Math.min(startX, ex);
         let maxX = Math.max(startX + TILE_SIZE, ex + TILE_SIZE);
@@ -79,6 +91,12 @@ export const BuildRect = {
         
         const width = maxX - minX;
         const height = maxY - minY;
+
+        if (!this.IsRectPosUseful(startX, startY, width, height)) {
+            log("Cannot build outside city boundary!");
+            this.stop();
+            return;
+        }
 
         const region = Game.currentView === 'city' ? 1 : 2;
 

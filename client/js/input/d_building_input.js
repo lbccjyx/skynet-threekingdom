@@ -39,12 +39,21 @@ export const BuildingInput = {
         }
     },
 
+    IsPosUseful: function(x, y) {
+        if (Game.currentView === 'city') {
+            if (x < CITY_BOUNDARY.minX || x > CITY_BOUNDARY.maxX || y < CITY_BOUNDARY.minY || y > CITY_BOUNDARY.maxY) {
+                return false;
+            }
+        }
+        return true;
+    },
+
     // Handle Mouse Down for Placement
     handlePlacementMouseDown: function() {
         const { x, y, region, def } = Game.placementState;
             
         // Check Boundary
-        if (x < CITY_BOUNDARY.minX || x > CITY_BOUNDARY.maxX || y < CITY_BOUNDARY.minY || y > CITY_BOUNDARY.maxY) {
+        if (!this.IsPosUseful(x, y)) {
             log("Cannot place building outside city boundary!");
             return;
         }
@@ -161,7 +170,7 @@ export const BuildingInput = {
         if (Game.currentView === 'city') {
              // Boundary check needs to consider building size
              // But simple check for center point might be enough or check corners
-             if (finalX < CITY_BOUNDARY.minX || finalX > CITY_BOUNDARY.maxX || finalY < CITY_BOUNDARY.minY || finalY > CITY_BOUNDARY.maxY) {
+             if (!this.IsPosUseful(finalX, finalY)) {
                   log("Cannot move outside city boundary!");
                   removeGhost();
                   Game.dragState.isDragging = false;

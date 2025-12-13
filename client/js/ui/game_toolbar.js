@@ -123,7 +123,7 @@ export const GameToolbar = {
 
     selectBuilding: function(def) {
         this.closeAllMenus();
-        BuildingType = def.key;
+        let BuildingType = def.key;
         log(`Selected ${def.name} BuildingType: ${BuildingType}`);
         
         if (Game.placementState.active) {
