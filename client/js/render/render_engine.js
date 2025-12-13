@@ -249,7 +249,7 @@ export const RenderEngine = {
                     if (customProcess) {
                         // Custom process receives full input (array or single)
                         const results = customProcess(modelInput, worldTileX, worldTileY, {
-                            scale: {x: scaleX/5, y: scaleY/5, z: scaleZ/2},
+                            scale: {x: scaleX, y: scaleY, z: scaleZ},
                             liftY: liftY,
                             tileSize: TILE_SIZE
                         });
@@ -268,7 +268,7 @@ export const RenderEngine = {
                         const clone = mainModel.clone();
 
                         if(type === RECT_BUILDING_DEFINITIONS[3].key) {
-                            clone.scale.set(scaleX / 5 , scaleY /5, scaleZ/2);
+                            clone.scale.set(scaleX , scaleY, scaleZ);
                         }else{
                             clone.scale.set(scaleX, scaleY, scaleZ);
                         }

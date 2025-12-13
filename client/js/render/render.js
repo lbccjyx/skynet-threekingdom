@@ -283,7 +283,7 @@ function processWallTile(models, wx, wy, config, wallMap) {
 
     const addPillar = () => {
         const clone = pillarModel.clone();
-        clone.scale.set(scale.x, scale.y, scale.z);
+        clone.scale.set(scale.x*2/5, scale.y/5, scale.z/2);
         clone.position.set(0, liftY, 0);
         clone.rotation.y = Math.PI/2;
 
@@ -292,7 +292,7 @@ function processWallTile(models, wx, wy, config, wallMap) {
 
     const addRail = (rotY, shiftX, shiftZ) => {
         const clone = railModel.clone();        
-        clone.scale.set(scale.x, scale.y, scale.z); 
+        clone.scale.set(scale.x/5, scale.y/5, scale.z/2); 
         clone.rotation.y = rotY;
         clone.position.set(shiftX * TILE_SIZE, liftY, shiftZ * TILE_SIZE);       
         pieces.push(clone);
