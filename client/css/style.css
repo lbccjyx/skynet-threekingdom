@@ -175,7 +175,7 @@ button:hover {
     border: 3px solid #2980b9;
     border-radius: 8px;
     position: absolute;
-    bottom: 20px;
+    bottom: 110px; /* Adjusted to avoid overlap with toolbar */
     right: 20px;
     cursor: pointer;
     z-index: 100;
@@ -233,4 +233,97 @@ button:hover {
 /* Legacy Grids (hidden) */
 .map-grid, .buildings-grid {
     display: none;
+}
+
+/* Game Toolbar */
+.game-toolbar {
+    position: absolute;
+    bottom: 20px;
+    right: 400px;
+    display: flex;
+    gap: 15px;
+    background: rgba(44, 62, 80, 0.8);
+    padding: 10px;
+    border-radius: 8px;
+    pointer-events: auto;
+    z-index: 100;
+}
+
+.toolbar-icon {
+    width: 60px;
+    height: 60px;
+    background: #34495e;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    color: white;
+    font-size: 12px;
+    transition: all 0.2s;
+    border: 1px solid #7f8c8d;
+}
+
+.toolbar-icon:hover, .toolbar-icon.active-mode, .submenu-item:hover {
+    background: #f8e111;
+    transform: translateY(-5px);
+}
+
+.toolbar-icon img {
+    width: 24px;
+    height: 24px;
+    margin-bottom: 2px;
+}
+
+/* Submenus */
+.toolbar-submenu {
+    position: absolute;
+    bottom: 110px; /* Above toolbar */
+    right: 400px;
+    background: rgba(44, 62, 80, 0.95);
+    border: 1px solid #7f8c8d;
+    border-radius: 8px;
+    padding: 10px;
+    display: flex; 
+    flex-direction: row;
+    gap: 5px;
+    min-width: 150px;
+    z-index: 101;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    pointer-events: auto;
+}
+
+/* 保持容器尺寸不变 */
+.submenu-item {
+    padding: 10px 8px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 1px;
+    cursor: pointer;
+    color: white;
+    font-size: 14px;
+    transition: background 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 80px; /* 固定宽度 */
+    height:50px; /* 固定高度 */
+    box-sizing: border-box;
+}
+
+/* 图片放大但通过transform不影响布局 */
+.submenu-image {
+    width: 80px;
+    height: 60px;
+    display: block;
+    transform: scale(0.9); /* 稍微缩小以保持在容器内 */
+    transform-origin: center center;
+    margin-bottom: 5px;
+}
+
+.submenu-text {
+    margin-top: 8px; /* 文字向下移动 */
+    font-size: 13px; /* 稍微缩小字体 */
+    line-height: 1.3;
 }

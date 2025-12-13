@@ -10,15 +10,18 @@ export const BuildRect = {
     startPos: null, // {x, y}
     currentRect: null, // THREE.Mesh
 
-    start: function() {
+    start: function(def) {
         this.active = true;
+        this.currentDef = def;
         RenderEngine.setGridVisibility(true);
-        log("进入圈地模式: 左键拖拽选择区域，右键取消");
+        const name = def ? def.name : 'Unknown';
+        log(`进入圈地模式: ${name} (左键拖拽选择区域，右键取消)`);
     },
 
     stop: function() {
         this.active = false;
         this.startPos = null;
+        this.currentDef = null;
         this.clearGhost();
         RenderEngine.setGridVisibility(false);
         log("退出圈地模式");
@@ -39,12 +42,18 @@ export const BuildRect = {
     },
 
     onMouseMove: function(e) {
-        if (!this.active || !this.startPos) return;
-
+        if (!this.active) return;
+        
         const worldPos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
         
         const cx = Math.floor(worldPos.x / TILE_SIZE) * TILE_SIZE;
         const cy = Math.floor(worldPos.y / TILE_SIZE) * TILE_SIZE;
+
+        if (!this.startPos) {
+            // Show cursor ghost (1x1 tile)
+            this.updateGhost(cx, cy, TILE_SIZE, TILE_SIZE);
+            return;
+        }
 
         this.updateRect(cx, cy);
     },
@@ -69,6 +78,7 @@ export const BuildRect = {
         const height = maxY - minY;
 
         const region = Game.currentView === 'city' ? 1 : 2;
+        const type = this.currentDef ? this.currentDef.key : 1;
 
         // Send request
         sendRequest('build_rect', {
@@ -76,7 +86,8 @@ export const BuildRect = {
             y: minY,
             width: width,
             height: height,
-            region: region
+            region: region,
+            type: type
         }, (res) => {
             if (res.ok) {
                 log("圈地成功!");

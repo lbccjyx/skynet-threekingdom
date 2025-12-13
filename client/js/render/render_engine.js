@@ -167,7 +167,7 @@ export const RenderEngine = {
     },
 
     // 创建平铺在地面上的实体 (用于圈地)
-    createFlatEntity: function(id, width, height, x, y, color) {
+    createFlatEntity: function(id, width, height, x, y, glb_file) {
         if (this.objects[id]) {
             const obj = this.objects[id];
             obj.position.x = x;
@@ -224,7 +224,7 @@ export const RenderEngine = {
                         // Placeholder
                         const geo = new THREE.BoxGeometry(TILE_SIZE - 2, 0, TILE_SIZE - 2);
                         const mat = new THREE.MeshLambertMaterial({ 
-                            color: color || 0x88cc88, 
+                            color: 0xffaa00, 
                             transparent: true, 
                             opacity: 0.6 
                         });
@@ -247,7 +247,7 @@ export const RenderEngine = {
                 if (!this.loadingModelPromise) {
                     const loader = new THREE.GLTFLoader();
                     this.loadingModelPromise = new Promise((resolve) => {
-                        loader.load('assets/123.glb', (gltf) => {
+                        loader.load(glb_file, (gltf) => {
                             this.modelCache = gltf.scene;
                             
                             // 遍历模型中的所有 Mesh，增强材质亮度

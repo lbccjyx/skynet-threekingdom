@@ -97,13 +97,14 @@ CREATE TABLE `s_house_population` (
   UNIQUE KEY `idx_type_lev` (`type`, `level`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-DROP TABLE IF EXISTS d_farmland;
-CREATE TABLE d_farmland (
+DROP TABLE IF EXISTS d_rect_building;
+CREATE TABLE d_rect_building (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     `x` INT NOT NULL comment "左下角坐标",
     `y` INT NOT NULL,
     `width` INT NOT NULL comment "宽度",
     `height` INT NOT NULL,
-    `region` INT DEFAULT 2
+    `region` INT DEFAULT 2,
+    `type` INT NOT NULL comment "类型"
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -114,6 +114,7 @@ build_rect 6{
         width 2: integer
         height 3: integer
         region 4: integer
+        type 5: integer
     }
 
     response {

@@ -8,6 +8,7 @@ import { RenderEngine } from '../render/render_engine.js';
 import { BuildRect } from '../game/build_rect.js';
 import { BuildRectInput } from './d_build_rect_input.js';
 import { BuildingInput } from './d_building_input.js';
+import { GameToolbar } from '../ui/game_toolbar.js';
 
 // Helper to find interactive parent
 function findInteractiveObject(object) {
@@ -23,7 +24,7 @@ function findInteractiveObject(object) {
     return null;
 }
 
-// 设置右键菜单
+// 设置右键菜单 (Replaced with toolbar logic, now mostly handles cancellation and closing menus)
 export function setupContextMenus() {
     const container = document.getElementById('three-container');
     if (!container) return;
@@ -31,11 +32,13 @@ export function setupContextMenus() {
     container.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         
+        // 1. Cancel Placement / BuildRect
         if (Game.placementState.active) {
             Game.placementState.active = false;
             Game.placementState.def = null;
             RenderEngine.setGridVisibility(false);
             removeGhost();
+            log("取消建造");
             return;
         }
 
@@ -44,68 +47,11 @@ export function setupContextMenus() {
             return;
         }
         
-        // Only allow context menu if no active drag and no active pan
-        if (Game.dragState.isDragging || RenderEngine.panState.isPanning) return;
-
-        const pos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
-        const buildX = Math.floor(pos.x);
-        const buildY = Math.floor(pos.y);
-        
-        const region = Game.currentView === 'city' ? 1 : 2;
-
-        const existing = document.querySelector('.context-menu');
-        if (existing) existing.remove();
-        
-        const menu = document.createElement('div');
-        menu.className = 'context-menu';
-        menu.style.left = e.clientX + 'px';
-        menu.style.top = e.clientY + 'px';
-        
-        const closeMenu = () => {
-            if (document.body.contains(menu)) {
-                menu.remove();
-            }
-            document.removeEventListener('click', closeMenu);
-        };
-
-        // Check for right click on existing objects (Delete menu)
-        const intersects = RenderEngine.getIntersections(e.clientX, e.clientY);
-        
-        let targetObject = null;
-        for (const hit of intersects) {
-            const found = findInteractiveObject(hit.object);
-            if (found) {
-                targetObject = found;
-                break;
-            }
+        // 2. Close Toolbar Menus
+        GameToolbar.closeAllMenus();
+        if (GameToolbar.deleteMode) {
+             GameToolbar.toggleDeleteMode(); // Exit delete mode on right click
         }
-        
-        if (targetObject && targetObject.userData.type === 'rect_building') {
-             // Pass { object: targetObject } to simulate old structure if needed, or just modify handler
-             if (BuildRectInput.handleContextMenu(e, { object: targetObject }, menu, closeMenu)) {
-                 document.body.appendChild(menu);
-                 setTimeout(() => document.addEventListener('click', closeMenu), 100);
-                 return;
-             }
-        }
-
-        // Building Placement Menu
-        BuildingInput.handleContextMenu(menu, region, buildX, buildY, closeMenu);
-
-
-        const rectItem = document.createElement('div');
-        rectItem.className = 'context-menu-item';
-        rectItem.textContent = "圈地";
-        rectItem.onclick = (e) => {
-             e.stopPropagation();
-             BuildRect.start();
-             menu.remove();
-             document.removeEventListener('click', closeMenu);
-        };
-        menu.appendChild(rectItem);
-        
-        document.body.appendChild(menu);
-        setTimeout(() => document.addEventListener('click', closeMenu), 100);
     });
 }
 
@@ -188,8 +134,8 @@ export function initInteractionListeners() {
             // 左下角日志面板 (320x220)
             if (e.clientY > h - 220 && e.clientX < 320) return;
             
-            // 右下角城池图标 (80x80)
-            if (e.clientY > h - 80 && e.clientX > w - 80) return;
+            // 右下角城池图标和工具栏区域
+            if (e.clientY > h - 150 && e.clientX > w - 300) return;
 
             const id = Game.dragState.id;
             const newX = worldPos.x - Game.dragState.offsetX;
@@ -266,6 +212,20 @@ export function initInteractionListeners() {
         
         // 左键 (0) -> 开始拖拽 / 交互
         if (e.button !== 0) return;
+
+        // DELETE MODE CHECK
+        if (GameToolbar.deleteMode) {
+             const intersects = RenderEngine.getIntersections(e.clientX, e.clientY);
+             for (const hit of intersects) {
+                const found = findInteractiveObject(hit.object);
+                if (found) {
+                    if (GameToolbar.handleDeleteClick(found)) {
+                        return; // Handled
+                    }
+                }
+             }
+             return;
+        }
 
         if (BuildRect.active) {
             BuildRect.onMouseDown(e);

@@ -89,11 +89,11 @@ local function load_data()
         end
     end
 
-    res = db:query("SELECT * FROM d_farmland WHERE user_id="..user_id)
+    res = db:query("SELECT * FROM d_rect_building WHERE user_id="..user_id)
     data.rect_buildings = {}
     if res then
         for _, row in ipairs(res) do
-            table.insert(data.rect_buildings, DataWrapper.new(db, "d_farmland", "id", row))
+            table.insert(data.rect_buildings, DataWrapper.new(db, "d_rect_building", "id", row))
         end
     end
 end

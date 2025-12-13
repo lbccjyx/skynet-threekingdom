@@ -165,7 +165,10 @@ function renderRects(currentRegion) {
             const cy = r.y + r.height / 2;
             
             // Orange-ish color for farmland/rects
-            const mesh = RenderEngine.createFlatEntity('rect_' + r.id, r.width, r.height, cx, cy, 0xffaa00);
+            const definitions = window.RECT_BUILDING_DEFINITIONS || {};
+            const def = definitions[r.type] || { image: 'assets/glb_file/tower.glb' };
+
+            const mesh = RenderEngine.createFlatEntity('rect_' + r.id, r.width, r.height, cx, cy, def.image);
             mesh.userData.type = 'rect_building';
             mesh.userData.data = r;
         });

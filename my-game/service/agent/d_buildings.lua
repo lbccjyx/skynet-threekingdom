@@ -115,9 +115,10 @@ function handler.init(env)
         local width = args.width
         local height = args.height
         local region = args.region or 2 -- Default to map
+        local type = args.type or 1
 
         -- 简单的合法性检查
-        if width <= 0 or height <= 0 then
+        if width <= 0 or height <= 0 or type <= 0 then
             return { ok = false }
         end
 
@@ -169,11 +170,11 @@ function handler.init(env)
             end
         end
 
-        local sql = string.format("INSERT INTO d_farmland (user_id, x, y, width, height, region) VALUES (%d, %d, %d, %d, %d, %d)",
-            user_id, x, y, width, height, region)
+        local sql = string.format("INSERT INTO d_rect_building (user_id, x, y, width, height, region, type) VALUES (%d, %d, %d, %d, %d, %d, %d)",
+            user_id, x, y, width, height, region, type)
         local res = db:query(sql)
         if not res or res.errno then
-            skynet.error("Insert farmland failed: " .. (res.err or "unknown"))
+            skynet.error("Insert rect building failed: " .. (res.err or "unknown"))
             return { ok = false }
         end
         
@@ -183,12 +184,13 @@ function handler.init(env)
             y = y,
             width = width,
             height = height,
-            region = region
+            region = region,
+            type = type
         }
         
         -- Add to memory
         if not data.rect_buildings then data.rect_buildings = {} end
-        table.insert(data.rect_buildings, DataWrapper.new(db, "d_farmland", "id", new_rect))
+        table.insert(data.rect_buildings, DataWrapper.new(db, "d_rect_building", "id", new_rect))
 
         return { ok = true, rect_building = new_rect }
     end
@@ -266,7 +268,7 @@ function handler.init(env)
         local id = args.id
         local db = env.get_db()
 
-        local sql = string.format("DELETE FROM d_farmland WHERE id=%d", id)
+        local sql = string.format("DELETE FROM d_rect_building WHERE id=%d", id)
         local res = db:query(sql)
         if not res or res.errno then
             return { ok = false }
