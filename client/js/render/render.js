@@ -157,20 +157,157 @@ export function removeGhost() {
 
 // 渲染区域 (圈地)
 function renderRects(currentRegion) {
-    if (Game.data.rect_buildings) {
-        Game.data.rect_buildings.forEach(r => {
-            const region = r.region !== undefined ? r.region : 2; 
-            if (region !== currentRegion) return;
+    if (!Game.data.rect_buildings) return;
 
-            const cx = r.x + r.width / 2;
-            const cy = r.y + r.height / 2;
-            
-            // Orange-ish color for farmland/rects 
-            const definitions = window.RECT_BUILDING_DEFINITIONS || {};
+    const definitions = window.RECT_BUILDING_DEFINITIONS || {};
+    // Assuming Wall Type ID is 3 based on context
+    const WALL_TYPE = 3; 
 
-            const mesh = RenderEngine.createFlatEntity('rect_' + r.id, r.width, r.height, cx, cy, r.type, definitions[r.type].image);
-            mesh.userData.type = 'rect_building';
-            mesh.userData.data = r;
-        });
+    // 1. Build Wall Map for connectivity check
+    // Map key: "x,y", value: true (using integer grid coordinates)
+    const wallMap = new Set();
+    Game.data.rect_buildings.forEach(r => {
+        const region = r.region !== undefined ? r.region : 2; 
+        if (region !== currentRegion) return;
+        if (r.type !== WALL_TYPE) return;
+
+        // Iterate all tiles in this rect
+        const cols = Math.round(r.width / TILE_SIZE);
+        const rows = Math.round(r.height / TILE_SIZE);
+        const startX = Math.round(r.x / TILE_SIZE);
+        const startY = Math.round(r.y / TILE_SIZE);
+
+        for(let c=0; c<cols; c++) {
+            for(let row=0; row<rows; row++) {
+                wallMap.add(`${startX + c},${startY + row}`);
+            }
+        }
+    });
+
+    Game.data.rect_buildings.forEach(r => {
+        const region = r.region !== undefined ? r.region : 2; 
+        if (region !== currentRegion) return;
+
+        const cx = r.x + r.width / 2;
+        const cy = r.y + r.height / 2;
+        
+        const def = definitions[r.type] || {};
+
+        let customProcess = null;
+        let glbFiles = def.image;
+
+        if (r.type === WALL_TYPE) {
+            // Use specific models for Pillar and Rail
+            glbFiles = ['assets/glb_file/wall_pillar.glb', 'assets/glb_file/wall_rail.glb'];
+
+            customProcess = (models, wx, wy, config) => {
+                return processWallTile(models, wx, wy, config, wallMap);
+            };
+        }
+
+        const mesh = RenderEngine.createFlatEntity(
+            'rect_' + r.id, 
+            r.width, 
+            r.height, 
+            cx, 
+            cy, 
+            r.type, 
+            glbFiles,
+            customProcess
+        );
+        mesh.userData.type = 'rect_building';
+        mesh.userData.data = r;
+    });
+}
+
+// Helper for Wall Connectivity
+function processWallTile(models, wx, wy, config, wallMap) {
+    const tx = Math.floor(wx / TILE_SIZE);
+    const ty = Math.floor(wy / TILE_SIZE);
+    
+    // Check neighbors
+    const hasN = wallMap.has(`${tx},${ty-1}`);
+    const hasS = wallMap.has(`${tx},${ty+1}`);
+    const hasW = wallMap.has(`${tx-1},${ty}`);
+    const hasE = wallMap.has(`${tx+1},${ty}`);
+    
+    const pieces = [];
+
+    // Assuming models[0] is Pillar, models[1] is Rail (Arm)
+    // Handle array input (if loaded) or fallback
+    let pillarModel = null;
+    let railModel = null;
+
+    if (Array.isArray(models)) {
+        pillarModel = models[0];
+        railModel = models[1] || models[0]; // Fallback to pillar if rail missing
+    } else {
+        pillarModel = models;
+        railModel = models;
     }
+    
+    if (!pillarModel) {
+        // Placeholder if model not loaded
+        const geo = new THREE.BoxGeometry(TILE_SIZE * 0.4, TILE_SIZE, TILE_SIZE * 0.4);
+        const mat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+        const center = new THREE.Mesh(geo, mat);
+        pieces.push(center);
+        
+        const armGeoH = new THREE.BoxGeometry(TILE_SIZE * 0.5, TILE_SIZE * 0.8, TILE_SIZE * 0.3);
+        const armGeoV = new THREE.BoxGeometry(TILE_SIZE * 0.3, TILE_SIZE * 0.8, TILE_SIZE * 0.5);
+        
+        if (hasN) {
+            const m = new THREE.Mesh(armGeoV, mat);
+            m.position.z = -TILE_SIZE * 0.25;
+            pieces.push(m);
+        }
+        if (hasS) {
+            const m = new THREE.Mesh(armGeoV, mat);
+            m.position.z = TILE_SIZE * 0.25;
+            pieces.push(m);
+        }
+        if (hasW) {
+            const m = new THREE.Mesh(armGeoH, mat);
+            m.position.x = -TILE_SIZE * 0.25;
+            pieces.push(m);
+        }
+        if (hasE) {
+            const m = new THREE.Mesh(armGeoH, mat);
+            m.position.x = TILE_SIZE * 0.25;
+            pieces.push(m);
+        }
+        return pieces;
+    }
+
+    const { scale, liftY } = config; // Note: config.scale is based on model[0] (pillar)
+
+    const addPillar = () => {
+        const clone = pillarModel.clone();
+        clone.scale.set(scale.x, scale.y, scale.z);
+        clone.position.set(0, liftY, 0);
+        clone.rotation.y = Math.PI/2;
+
+        pieces.push(clone);
+    };
+
+    const addRail = (rotY, shiftX, shiftZ) => {
+        const clone = railModel.clone();        
+        clone.scale.set(scale.x, scale.y, scale.z); 
+        clone.rotation.y = rotY;
+        clone.position.set(shiftX * TILE_SIZE, liftY, shiftZ * TILE_SIZE);       
+        pieces.push(clone);
+    };
+
+    // Add Central Pillar
+    addPillar();
+
+    if (hasE) {
+        addRail(0, -0.3, 0);
+    }
+    
+    if (hasS) {
+        addRail(Math.PI/2, 0, 1.2);
+    }
+
+    return pieces;
 }

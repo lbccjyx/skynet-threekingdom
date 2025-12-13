@@ -167,7 +167,7 @@ export const RenderEngine = {
     },
 
     // 创建平铺在地面上的实体 (用于圈地)
-    createFlatEntity: function(id, width, height, x, y, type, glb_file) {
+    createFlatEntity: function(id, width, height, x, y, type, glb_file, customProcess = null) {
         if (this.objects[id]) {
             const obj = this.objects[id];
             
@@ -179,6 +179,7 @@ export const RenderEngine = {
             } else {
                 obj.position.x = x;
                 obj.position.z = y;
+                // ...
                 return obj;
             }
         }
@@ -193,14 +194,14 @@ export const RenderEngine = {
         }else{
             group.position.set(x, 0, y);
         }
-        group.userData = { id: id, width: width, height: height, glb_file: glb_file };
+        group.userData = { id: id, width: width, height: height, glb_file: glb_file, type: type };
 
         // Calculate grid dimensions
         const cols = Math.round(width / TILE_SIZE);
         const rows = Math.round(height / TILE_SIZE);
         
         // Helper to populate group
-        const populate = (modelToClone) => {
+        const populate = (modelInput) => {
             // Remove existing children (placeholders or old models)
             while(group.children.length > 0){ 
                 group.remove(group.children[0]); 
@@ -209,25 +210,28 @@ export const RenderEngine = {
             const startX = -width / 2;
             const startZ = -height / 2;
 
-            // Compute scale once
+            // Handle model input: could be single object or array
+            let mainModel = modelInput;
+            if (Array.isArray(modelInput)) {
+                mainModel = modelInput[0]; // Use first as "main" for scale calculations if needed
+            }
+
+            // Compute scale once based on main model
             let scaleX = 1, scaleY = 1, scaleZ = 1;
             let liftY = 0;
             let rotationY = 0;
 
-            if(type === RECT_BUILDING_DEFINITIONS[3].key && cols > rows) {
+            if(type === RECT_BUILDING_DEFINITIONS[3].key && cols > rows && !customProcess) {
                 rotationY = Math.PI / 2;
             }
 
-            if (modelToClone) {
-                 const box = new THREE.Box3().setFromObject(modelToClone);
+            if (mainModel) {
+                 const box = new THREE.Box3().setFromObject(mainModel);
                  const size = box.getSize(new THREE.Vector3());
 
                  if (size.x > 0 && size.z > 0) {
-                     
                      scaleX = TILE_SIZE / size.x;
                      scaleZ = TILE_SIZE / size.z;
-                     // Optional: Scale Y to match tile size or keep aspect ratio?
-                     // Let's keep aspect ratio for height roughly, or just fit to TILE_SIZE
                      scaleY = TILE_SIZE / size.x; 
                  }
                  liftY = (size.y * scaleY) / 2;
@@ -238,11 +242,33 @@ export const RenderEngine = {
                     const tx = startX + c * TILE_SIZE + TILE_SIZE / 2;
                     const tz = startZ + r * TILE_SIZE + TILE_SIZE / 2;
                     
-                    if (modelToClone) {
-                        const clone = modelToClone.clone();
+                    // World Position of this tile (center of tile)
+                    const worldTileX = x + tx;
+                    const worldTileY = y + tz;
+
+                    if (customProcess) {
+                        // Custom process receives full input (array or single)
+                        const results = customProcess(modelInput, worldTileX, worldTileY, {
+                            scale: {x: scaleX/5, y: scaleY/5, z: scaleZ/2},
+                            liftY: liftY,
+                            tileSize: TILE_SIZE
+                        });
+                        
+                        if (results && Array.isArray(results)) {
+                            results.forEach(res => {
+                                res.position.x += tx;
+                                res.position.z += tz;
+                                group.add(res);
+                            });
+                        }
+                        continue;
+                    }
+
+                    if (mainModel) {
+                        const clone = mainModel.clone();
 
                         if(type === RECT_BUILDING_DEFINITIONS[3].key) {
-                            clone.scale.set(scaleX / 5 , scaleY /5, scaleZ);
+                            clone.scale.set(scaleX / 5 , scaleY /5, scaleZ/2);
                         }else{
                             clone.scale.set(scaleX, scaleY, scaleZ);
                         }
@@ -268,35 +294,40 @@ export const RenderEngine = {
         // Initial Placeholder
         populate(null);
 
-        // Load Model
-        if (this.modelCache[glb_file]) {
-            populate(this.modelCache[glb_file]);
-        } else {
-            if (typeof THREE.GLTFLoader !== 'undefined') {
-                if (!this.loadingModelPromise[glb_file]) {
-                    const loader = new THREE.GLTFLoader();
-                    this.loadingModelPromise[glb_file] = new Promise((resolve) => {
-                        loader.load(glb_file, (gltf) => {
-                            this.modelCache[glb_file] = gltf.scene;
-                            
-                            // 遍历模型中的所有 Mesh，增强材质亮度
-                                this.modelCache[glb_file].traverse((child) => {
-                                    if (child.isMesh && child.material) {
-                                        child.material.color.multiplyScalar(5); 
-                                    }
-                                });
-                            
-
-                            resolve(gltf.scene);
-                        }, undefined, (err) => {
-                            console.error('Error loading model', err);
-                            resolve(null);
+        // Load Logic for Single or Multiple Files
+        const loadSingleModel = (path) => {
+            if (this.modelCache[path]) return Promise.resolve(this.modelCache[path]);
+            
+            if (!this.loadingModelPromise[path]) {
+                const loader = new THREE.GLTFLoader();
+                this.loadingModelPromise[path] = new Promise((resolve) => {
+                    loader.load(path, (gltf) => {
+                        this.modelCache[path] = gltf.scene;
+                        this.modelCache[path].traverse((child) => {
+                            if (child.isMesh && child.material) {
+                                child.material.color.multiplyScalar(5); 
+                            }
                         });
+                        resolve(gltf.scene);
+                    }, undefined, (err) => {
+                        console.error('Error loading model', err);
+                        resolve(null);
                     });
-                }
-                
-                this.loadingModelPromise[glb_file].then(model => {
-                    if (model && this.objects[id] === group) { // Only update if group still exists
+                });
+            }
+            return this.loadingModelPromise[path];
+        };
+
+        if (typeof THREE.GLTFLoader !== 'undefined') {
+            if (Array.isArray(glb_file)) {
+                Promise.all(glb_file.map(f => loadSingleModel(f))).then(models => {
+                    if (models && this.objects[id] === group) {
+                        populate(models); // Pass array
+                    }
+                });
+            } else {
+                loadSingleModel(glb_file).then(model => {
+                    if (model && this.objects[id] === group) {
                         populate(model);
                     }
                 });
