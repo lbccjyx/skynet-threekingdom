@@ -2,7 +2,8 @@ import { UI } from '../ui/elements.js';
 import { Game } from '../core/state.js';
 import { sendRequest } from '../core/api.js';
 import { log } from '../core/utils.js';
-import { renderCity, renderMap, switchView, removeGhost } from '../render/render.js';
+import { switchView, updateGameView } from '../game/game.js';
+import { GhostManager } from '../game/managers/GhostManager.js';
 import { RenderEngine } from '../render/render_engine.js';
 import { BuildRect } from '../game/build_rect.js';
 import { BuildRectInput } from './d_build_rect_input.js';
@@ -36,7 +37,7 @@ export function setupContextMenus() {
             Game.placementState.active = false;
             Game.placementState.def = null;
             RenderEngine.setGridVisibility(false);
-            removeGhost();
+            GhostManager.removeGhost();
             log("取消建造");
             return;
         }
@@ -319,8 +320,7 @@ export function initInteractionListeners() {
                 if (Game.currentView === 'city') {
                      if (!BuildingInput.IsPosUseful(finalX, finalY)) {
                           log("Cannot move outside city boundary!");
-                          if (Game.currentView === 'city') renderCity();
-                          else renderMap();
+                          updateGameView();
                           
                           Game.dragState.isDragging = false;
                           Game.dragState.id = null;
@@ -338,9 +338,9 @@ export function initInteractionListeners() {
                         if (res.ok) {
                             const g = Game.data.generals.find(g => g.id === generalId);
                             if (g) { g.x = res.x; g.y = res.y; }
-                            renderMap();
+                            updateGameView();
                         } else {
-                            renderMap();
+                            updateGameView();
                         }
                     });
                      // Clear state for general

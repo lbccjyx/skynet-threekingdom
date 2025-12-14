@@ -1,7 +1,8 @@
 import { Game } from '../core/state.js';
-import { updateUI, updateResourcesUI } from '../render/render.js';
+import { updateUI, updateResourcesUI } from '../game/game.js';
 import { log } from '../core/utils.js';
 
+// proto回调更新游戏状态
 export function updateGameState(data) {
     if (!data) return; // Add check for null data
     if (data.user) Game.data.user = data.user;

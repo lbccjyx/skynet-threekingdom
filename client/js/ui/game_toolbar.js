@@ -2,7 +2,8 @@ import { Game } from '../core/state.js';
 import { BuildRect } from '../game/build_rect.js';
 import { RenderEngine } from '../render/render_engine.js';
 import { log } from '../core/utils.js';
-import { createGhost, removeGhost, renderCity, renderMap } from '../render/render.js';
+import { updateGameView } from '../game/game.js';
+import { GhostManager } from '../game/managers/GhostManager.js';
 import { sendRequest } from '../core/api.js';
 
 export const GameToolbar = {
@@ -127,7 +128,7 @@ export const GameToolbar = {
         log(`Selected ${def.name} BuildingType: ${BuildingType}`);
         
         if (Game.placementState.active) {
-            removeGhost();
+            GhostManager.removeGhost();
         }
 
         Game.placementState.active = true;
@@ -140,7 +141,7 @@ export const GameToolbar = {
         Game.placementState.y = 0;
 
         RenderEngine.setGridVisibility(true);
-        createGhost(def, 0, 0);
+        GhostManager.createGhost(def, 0, 0);
     },
 
     // def == RECT_BUILDING_DEFINITIONS中的某条数据
@@ -166,7 +167,7 @@ export const GameToolbar = {
             // Cancel other modes
             if (Game.placementState.active) {
                 Game.placementState.active = false;
-                removeGhost();
+                GhostManager.removeGhost();
             }
             if (BuildRect.active) {
                 BuildRect.stop();
@@ -206,7 +207,7 @@ export const GameToolbar = {
                 if (res.ok) {
                     log("建筑已删除");
                     Game.data.buildings = Game.data.buildings.filter(b => b.id !== realId);
-                    if (Game.currentView === 'city') renderCity(); else renderMap();
+                    updateGameView();
                 } else {
                     log("删除失败");
                 }
@@ -224,7 +225,7 @@ export const GameToolbar = {
                     }
 
                     Game.data.rect_buildings = Game.data.rect_buildings.filter(r => r.id !== realId);
-                    if (Game.currentView === 'city') renderCity(); else renderMap();
+                    updateGameView();
                     
                     RenderEngine.setGridVisibility(false);
                 } else {

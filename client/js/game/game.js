@@ -3,15 +3,18 @@ import { connectWS } from '../core/network.js';
 import { setupContextMenus, initListeners, initInteractionListeners } from '../input/input.js';
 import { RenderEngine } from '../render/render_engine.js';
 import { GameToolbar } from '../ui/game_toolbar.js';
+import { sceneManager } from './managers/SceneManager.js';
+import { CityScene } from './scenes/CityScene.js';
+import { MapScene } from './scenes/MapScene.js';
+import { UI } from '../ui/elements.js';
 
 export async function startGame() {
-    // 1. Load Sproto Definition
     try {
+        // 1. Load Sproto Definition
         const response = await fetch('game.sproto');
         const sprotoText = await response.text();
         
         // 2. Initialize Sproto
-        // Sproto is a global class from sproto.js
         const SprotoClass = window.Sproto || Sproto;
         Game.sproto = new SprotoClass(sprotoText);
         Game.host = Game.sproto.host("package");
@@ -31,6 +34,13 @@ export async function startGame() {
         // Initialize 3D Engine
         RenderEngine.init();
 
+        // Initialize Scenes
+        sceneManager.registerScene('city', new CityScene());
+        sceneManager.registerScene('map', new MapScene());
+        
+        // Default View
+        sceneManager.switchScene('city');
+
         // Start Game Loop (Progress bars, etc.)
         startGameLoop();
         
@@ -40,29 +50,61 @@ export async function startGame() {
     }
 }
 
+// Global update loop
 function startGameLoop() {
-    setInterval(() => {
-        if (!Game.data.buildings) return;
+    let lastTime = performance.now();
+    
+    const loop = (time) => {
+        const dt = (time - lastTime) / 1000;
+        lastTime = time;
 
-        const now = (Date.now() / 1000) + (Game.serverTimeOffset || 0);
-        const definitions = window.BUILDING_DEFINITIONS || {}; // Global from StaticData.js
-        
-        Game.data.buildings.forEach(b => {
-            const begin = parseInt(b.begin_build_time || 0);
-            
-            const def = definitions[b.type];
-            const duration = def ? (def.build_sec || 10) : 10;
-            
-            if (begin > 0 && duration > 0) {
-                const elapsed = now - begin;
-                let pct = (elapsed / duration) * 100;
-                
-                if (pct > 100) pct = 100;
-                if (pct < 0) pct = 0;
-                
-                RenderEngine.updateProgress(b.id, pct);
-            }
-        });
-    }, 100);
+        sceneManager.update(dt);
+        requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
 }
 
+// 供外部调用的切换视图接口（兼容旧代码）
+export function switchView(viewName) {
+    Game.currentView = viewName;
+    sceneManager.switchScene(viewName);
+}
+
+// 供外部调用的刷新接口
+export function updateGameView() {
+    // Re-enter current scene to refresh entities
+    // This is a simple way to handle data updates: rebuild the scene.
+    // Optimization: Diff update
+    const current = sceneManager.getCurrentScene();
+    if (current) {
+        current.enter();
+    }
+}
+
+// 更新UI (从 render.js 迁移过来)
+export function updateUI() {
+    updateResourcesUI();
+    
+    // City Info
+    if (Game.data.city) {
+        UI.city.name.textContent = Game.data.city.name;
+        UI.city.level.textContent = Game.data.city.level;
+    }
+    
+    // Refresh current view
+    updateGameView();
+}
+
+// 更新资源UI
+export function updateResourcesUI() {
+    const items = Game.data.items;
+    if (!items) return;
+    
+    for (const id in items) {
+        const amount = items[id];
+        const el = UI.res[id];
+        if (el) {
+            el.textContent = amount;
+        }
+    }
+}

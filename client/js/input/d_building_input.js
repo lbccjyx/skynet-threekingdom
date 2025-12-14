@@ -2,9 +2,11 @@ import { Game } from '../core/state.js';
 import { RenderEngine } from '../render/render_engine.js';
 import { sendRequest } from '../core/api.js';
 import { log } from '../core/utils.js';
-import { renderCity, renderMap, createGhost, updateGhost, removeGhost } from '../render/render.js';
+import { updateGameView } from '../game/game.js';
+import { GhostManager } from '../game/managers/GhostManager.js';
 import { CITY_BOUNDARY } from '../core/config.js';
 import { TILE_SIZE } from '../core/config.js';
+import { getNumberAfterUnderscore } from '../game/entities/Entity.js';
 
 export const BuildingInput = {
     // Handle Context Menu for Building Placement
@@ -30,7 +32,7 @@ export const BuildingInput = {
                 Game.placementState.y = buildY;
                 
                 RenderEngine.setGridVisibility(true);
-                createGhost(def, buildX, buildY);
+                GhostManager.createGhost(def, buildX, buildY);
 
                 menu.remove();
                 document.removeEventListener('click', closeMenu);
@@ -70,8 +72,7 @@ export const BuildingInput = {
                 log("Building started!");
                 if (res.building) {
                     Game.data.buildings.push(res.building);
-                    if (region === 1) renderCity();
-                    else renderMap();
+                    updateGameView();
                 }
             } else {
                 log("Build failed");
@@ -81,7 +82,7 @@ export const BuildingInput = {
         Game.placementState.active = false;
         Game.placementState.def = null;
         RenderEngine.setGridVisibility(false);
-        removeGhost();
+        GhostManager.removeGhost();
     },
 
     // Handle Mouse Move for Placement (Ghost Update)
@@ -92,7 +93,7 @@ export const BuildingInput = {
         if (snapX !== Game.placementState.x || snapY !== Game.placementState.y) {
             Game.placementState.x = snapX;
             Game.placementState.y = snapY;
-            updateGhost(snapX, snapY);
+            GhostManager.updateGhost(snapX, snapY);
         }
     },
 
@@ -114,7 +115,7 @@ export const BuildingInput = {
         Game.dragState.offsetY = worldPos.y - objGameY;
         
         // Initialize Ghost at current position
-        createGhost(def, objGameX, objGameY);
+        GhostManager.createGhost(def, objGameX, objGameY);
         
         RenderEngine.setGridVisibility(true);
         log(`Started dragging building ${id}`);
@@ -144,7 +145,7 @@ export const BuildingInput = {
          const snappedCY = tlY + h / 2;
          
          // Update Ghost
-         updateGhost(snappedCX, snappedCY);
+         GhostManager.updateGhost(snappedCX, snappedCY);
          
          // Store for DragEnd
          Game.dragState.lastBuildingX = snappedCX;
@@ -172,7 +173,7 @@ export const BuildingInput = {
              // But simple check for center point might be enough or check corners
              if (!this.IsPosUseful(finalX, finalY)) {
                   log("Cannot move outside city boundary!");
-                  removeGhost();
+                  GhostManager.removeGhost();
                   Game.dragState.isDragging = false;
                   Game.dragState.id = null;
                   Game.dragState.type = null;
@@ -182,10 +183,9 @@ export const BuildingInput = {
              }
         }
         
-        log(`Moved building ${id} to (${finalX}, ${finalY})`);
-
-        const buildId = parseInt(id.replace('build_', ''));
-        
+        const buildId = getNumberAfterUnderscore(id);
+        // 用于调试建筑移动        
+        // log(`Moved building ${buildId} to (${finalX}, ${finalY})`);
         // Send request with new Center coordinates
          sendRequest('build_move', {
             id: buildId,
@@ -195,15 +195,13 @@ export const BuildingInput = {
             if (res.ok) {
                 const b = Game.data.buildings.find(b => b.id === buildId);
                 if (b) { b.x = res.building.x; b.y = res.building.y; }
-                if (Game.currentView === 'city') renderCity();
-                else renderMap();
+                updateGameView();
             } else {
-                if (Game.currentView === 'city') renderCity();
-                else renderMap();
+                updateGameView();
             }
         });
 
-        removeGhost();
+        GhostManager.removeGhost();
         Game.dragState.isDragging = false;
         Game.dragState.id = null;
         Game.dragState.type = null;

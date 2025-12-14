@@ -3,7 +3,8 @@ import { RenderEngine } from '../render/render_engine.js';
 import { log } from '../core/utils.js';
 import { sendRequest } from '../core/api.js';
 import { TILE_SIZE, CITY_BOUNDARY } from '../core/config.js';
-import { renderMap, renderCity } from '../render/render.js';
+import { updateGameView } from './game.js';
+import { GhostManager } from './managers/GhostManager.js';
 
 export const BuildRect = {
     active: false,
@@ -128,8 +129,7 @@ export const BuildRect = {
                 this.startPos = null;
                 
                 // Refresh view
-                if (Game.currentView === 'city') renderCity();
-                else renderMap();
+                updateGameView();
                 
                 this.stop();
             } else {

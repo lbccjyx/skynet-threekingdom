@@ -2,9 +2,10 @@ import { Game } from '../core/state.js';
 import { RenderEngine } from '../render/render_engine.js';
 import { sendRequest } from '../core/api.js';
 import { log } from '../core/utils.js';
-import { renderCity, renderMap } from '../render/render.js';
+import { updateGameView } from '../game/game.js';
 import { TILE_SIZE } from '../core/config.js';
 import { BuildRect } from '../game/build_rect.js';
+import { getNumberAfterUnderscore } from '../game/entities/Entity.js';
 
 
 export const BuildRectInput = {
@@ -26,8 +27,7 @@ export const BuildRectInput = {
                 sendRequest('build_rect_del', { id: id }, (res) => {
                     if (res.ok) {
                          Game.data.rect_buildings = Game.data.rect_buildings.filter(r => r.id !== id);
-                         if (Game.currentView === 'city') renderCity();
-                         else renderMap();
+                         updateGameView();
                          log("已删除圈地");
                     } else {
                         log("删除失败");
@@ -126,8 +126,7 @@ export const BuildRectInput = {
             return;
          }
 
-         const finalId = parseInt(id.replace('rect_', ''));
-
+         const finalId = getNumberAfterUnderscore(id);
          sendRequest('build_rect_move', {
             id: finalId,
             x: tlX,
@@ -136,11 +135,9 @@ export const BuildRectInput = {
             if (res.ok) {
                 const r = Game.data.rect_buildings.find(r => r.id === finalId);
                 if (r) { r.x = res.rect_building.x; r.y = res.rect_building.y; }
-                if (Game.currentView === 'city') renderCity();
-                else renderMap();
+                updateGameView();
             } else {
-                if (Game.currentView === 'city') renderCity();
-                else renderMap();
+                updateGameView();
             }
         });
 

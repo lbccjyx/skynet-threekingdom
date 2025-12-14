@@ -1,4 +1,5 @@
 import { TILE_SIZE, CAMERA_CONFIG, LIGHT_CONFIG, GRID_CONFIG, CITY_BOUNDARY } from '../core/config.js';
+import { log } from '../core/utils.js';
 
 export const RenderEngine = {
     scene: null,
@@ -391,11 +392,15 @@ export const RenderEngine = {
     },
     
     // 更新建筑的进度条
-    updateProgress: function(id, percent) {
-        const obj = this.objects['build_' + id];
-        if (!obj) return;
-        
+    updateProgress: function(RenderId, percent) {
+        const obj = this.objects[RenderId];
+        if (!obj) 
+        {
+            log(' updateProgress: function(id, percent) obj is null');
+            return;
+        }
         let bar = obj.getObjectByName('progressBar');
+        // 就是要bar不存在也要创建
         if (!bar && percent < 100) {
             const width = 40;
             const height = 6;
