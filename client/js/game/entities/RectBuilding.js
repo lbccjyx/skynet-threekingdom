@@ -85,11 +85,11 @@ export class RectBuilding extends Entity {
 
         const { scale, liftY } = config; 
 
-        const addPillar = () => {
+        const addPillar = (rotY) => {
             const clone = pillarModel.clone();
             clone.scale.set(scale.x*2/5, scale.y/5, scale.z/2);
             clone.position.set(0, liftY, 0);
-            clone.rotation.y = Math.PI/2;
+            clone.rotation.y = rotY;
             pieces.push(clone);
         };
 
@@ -101,15 +101,21 @@ export class RectBuilding extends Entity {
             pieces.push(clone);
         };
 
-        // Add Central Pillar
-        addPillar();
-
+        let IsPillarShow = false;
         if (hasE) {
             addRail(0, -0.3, 0);
+            addPillar(Math.PI/2);
+            IsPillarShow = true;
         }
         
         if (hasS) {
             addRail(Math.PI/2, 0, 1.2);
+            addPillar(Math.PI);
+            IsPillarShow = true;
+        }
+
+        if(!IsPillarShow) {
+            addPillar(Math.PI);
         }
 
         return pieces;
