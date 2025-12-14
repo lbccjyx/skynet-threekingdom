@@ -187,12 +187,14 @@ export const RenderEngine = {
 
         const group = new THREE.Group();
         // 这里是相当于3D 的x轴 Y轴 z轴的初始位置
-        if(type === RECT_BUILDING_DEFINITIONS[1].key) {
+        if(type === RECT_BUILDING_DEFINITIONS[1].key ) {
             group.position.set(x, -13, y);
         } else if(type === RECT_BUILDING_DEFINITIONS[3].key)
         {
             group.position.set(x, -90, y);
-        }else{
+        }else if(type === RECT_BUILDING_DEFINITIONS[4].key) {
+            group.position.set(x, -10, y);
+        } else{
             group.position.set(x, 0, y);
         }
         group.userData = { id: id, width: width, height: height, glb_file: glb_file, type: type };
@@ -235,6 +237,15 @@ export const RenderEngine = {
                      scaleZ = TILE_SIZE / size.z;
                      scaleY = TILE_SIZE / size.x; 
                  }
+
+                 // 民房的特殊处理
+                 if(type === RECT_BUILDING_DEFINITIONS[4].key) {
+                    scaleX = scaleX/1.5;
+                    scaleZ = scaleZ/1.2;
+                    scaleY = scaleY/2;
+                    rotationY = Math.PI * 6 / 4;
+                 }
+
                  liftY = (size.y * scaleY) / 2;
             }
 
@@ -306,7 +317,14 @@ export const RenderEngine = {
                         this.modelCache[path] = gltf.scene;
                         this.modelCache[path].traverse((child) => {
                             if (child.isMesh && child.material) {
-                                child.material.color.multiplyScalar(5); 
+
+                                if(type === RECT_BUILDING_DEFINITIONS[4].key) {
+                                    child.material.color.multiplyScalar(2);
+                                }else if (type === RECT_BUILDING_DEFINITIONS[3].key) {
+                                    child.material.color.multiplyScalar(4); 
+                                }else{
+                                    child.material.color.multiplyScalar(5); 
+                                }
                             }
                         });
                         resolve(gltf.scene);
@@ -320,7 +338,7 @@ export const RenderEngine = {
         };
 
         if (typeof THREE.GLTFLoader !== 'undefined') {
-            if (Array.isArray(glb_file)) {
+            if (type === RECT_BUILDING_DEFINITIONS[3].key && Array.isArray(glb_file)) {
                 Promise.all(glb_file.map(f => loadSingleModel(f))).then(models => {
                     if (models && this.objects[id] === group) {
                         populate(models); // Pass array
