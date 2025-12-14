@@ -115,7 +115,7 @@ export class RectBuilding extends Entity {
         }
 
         if(!IsPillarShow) {
-            addPillar(Math.PI);
+            addPillar(Math.PI/2);
         }
 
         return pieces;

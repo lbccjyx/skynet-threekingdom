@@ -218,16 +218,16 @@ export const GameToolbar = {
                     log("圈地已删除");
 
                     // Remove highlight before deleting, as materials might be shared across instances
-                    const objId = 'rect_' + realId;
+                    const objId = 'rect_building_' + realId;
                     RenderEngine.setHighlight(objId, false);
                     if (Game.hoveredBuildingId === objId) {
                         Game.hoveredBuildingId = null;
                     }
 
                     Game.data.rect_buildings = Game.data.rect_buildings.filter(r => r.id !== realId);
+                    RenderEngine.setGridVisibility(false);
                     updateGameView();
                     
-                    RenderEngine.setGridVisibility(false);
                 } else {
                     log("删除失败");
                 }
