@@ -49,6 +49,7 @@ login 1 {
         generals 4 : *General
         buildings 5 : *Building
         rect_buildings 6 : *RectBuilding
+        rect_buildings_sub 7 : *RectBuildingSub
     }
 }
 
@@ -108,6 +109,14 @@ build_move 5 {
     type 6 : integer
 }
 
+.RectBuildingSub {
+    id 0 : integer
+    rect_building_id 1 : integer
+    x 2 : integer
+    y 3 : integer
+    building_index 4 : integer
+}
+
 build_rect 6{
     request {
         x 0: integer
@@ -145,6 +154,12 @@ build_rect_del 8 {
     response {
         ok 0 : boolean
         id 1 : integer
+    }
+}
+
+build_rect_sub 9 {
+    response {
+        rect_buildings_sub 0 : RectBuildingSub
     }
 }
 

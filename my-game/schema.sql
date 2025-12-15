@@ -97,12 +97,19 @@ CREATE TABLE `s_house_population` (
   UNIQUE KEY `idx_type_lev` (`type`, `level`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- 矩形面积内有很多子建筑
 DROP TABLE IF EXISTS s_rect_building;
 CREATE TABLE `s_rect_building` (
-  `type` int NOT NULL PRIMARY KEY,
-  `name` varchar(32) NOT NULL
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  `type` int NOT NULL comment ' 1:农田 2:道路 3:城墙 4:房屋',
+  `name` varchar(32) NOT NULL,
+  `width` int DEFAULT '0' comment '宽度 s_building的长宽是建筑的长宽，这边的长宽是子建筑需要的长宽',
+  `height` int DEFAULT '0' comment '高度',
+  `sub_buildings` int NOT NULL comment '房屋子类型 s_buildings:id',
+  `sub_max_num` int NOT NULL comment '房屋子类型最大数量'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- 矩形面积
 DROP TABLE IF EXISTS d_rect_building;
 CREATE TABLE d_rect_building (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -113,4 +120,15 @@ CREATE TABLE d_rect_building (
     `height` INT NOT NULL,
     `region` INT DEFAULT 2,
     `type` INT NOT NULL comment "类型"
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 矩形面积内的子建筑
+DROP TABLE IF EXISTS d_rect_building_sub;
+CREATE TABLE d_rect_building_sub (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    `rect_building_id` INT NOT NULL comment "矩形面积id",
+    `x` INT NOT NULL comment "左下角坐标",
+    `y` INT NOT NULL,
+    `building_index` INT NOT NULL comment "第N个样式"
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

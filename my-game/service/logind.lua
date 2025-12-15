@@ -85,6 +85,7 @@ local function handle_login(username, password)
     return 200, json
 end
 
+-- 此服务开启http服务 并且简单判断密码
 skynet.start(function()
     port = tonumber(skynet.getenv("port_http"))
     local id = socket.listen("0.0.0.0", port)

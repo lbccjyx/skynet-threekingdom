@@ -7,9 +7,9 @@ start = "main"
 bootstrap = "snlua bootstrap"
 
 -- Path setup
-luaservice = root.."service/?.lua;"..root.."my-game/service/?.lua"
+luaservice = root.."service/?.lua;"..root.."my-game/service/?.lua;"..root.."service/db/?.lua"
 lualib = root.."lualib/?.lua;"..root.."my-game/lualib/?.lua"
-lua_path = root.."lualib/?.lua;"..root.."my-game/lualib/?.lua;"..root.."my-game/service/?.lua"
+lua_path = root.."lualib/?.lua;"..root.."my-game/lualib/?.lua;"..root.."my-game/service/?.lua;"..root.."service/db/?.lua"
 lua_cpath = root.."luaclib/?.so"
 
 -- Custom
@@ -20,4 +20,5 @@ mysql_port = 3306
 mysql_db = "ThreeKingdom"
 mysql_user = "skynet"
 mysql_pwd = "Password123"
+mysql_pool_size = 10
 

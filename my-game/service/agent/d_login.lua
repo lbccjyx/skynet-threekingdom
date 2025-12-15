@@ -3,33 +3,38 @@ local skynet = require "skynet"
 local handler = {}
 
 function handler.init(env)
-    local REQUEST = env.REQUEST
-    local data = env.data
+    local REQUEST = env.envREQUEST
+    local UserData = env.envUserData
     
     function REQUEST.login(args)
-        local r_user = data.user and data.user:raw() or { id = 0, username = "unknown" }
-        local r_city = data.city and data.city:raw() or { id = 0, name = "City", level = 1 }
+        local r_user = UserData.m_rUser and UserData.m_rUser:raw() or { id = 0, username = "unknown" }
+        local r_city = UserData.m_rCity and UserData.m_rCity:raw() or { id = 0, name = "City", level = 1 }
         
         local r_items = {}
-        if data.items then
-            for id, amount in pairs(data.items) do
-                table.insert(r_items, {id=id, amount=amount})
+        if UserData.m_itemsMap then
+            for id, amount in pairs(UserData.m_itemsMap) do
+                table.insert(r_items, { id = id, amount = amount })
             end
         end
         
         local r_gens = {}
-        if data.generals then
-            for _, v in ipairs(data.generals) do table.insert(r_gens, v:raw()) end
+        if UserData.m_generalsMap then
+            for id, v in pairs(UserData.m_generalsMap) do table.insert(r_gens, v:raw()) end
         end
         
         local r_builds = {}
-        if data.buildings then
-            for _, v in ipairs(data.buildings) do table.insert(r_builds, v:raw()) end
+        if UserData.m_buildingsMap then
+            for id, v in pairs(UserData.m_buildingsMap) do table.insert(r_builds, v:raw()) end
         end
         
         local r_rect_builds = {}
-        if data.rect_buildings then
-            for _, v in ipairs(data.rect_buildings) do table.insert(r_rect_builds, v:raw()) end
+        if UserData.m_rect_buildingsMap then
+            for id, v in pairs(UserData.m_rect_buildingsMap) do table.insert(r_rect_builds, v:raw()) end
+        end
+
+        local r_rect_building_sub = {}
+        if UserData.m_rect_building_subMap then
+            for id, v in pairs(UserData.m_rect_building_subMap) do table.insert(r_rect_building_sub, v:raw()) end
         end
         
         return {
@@ -39,7 +44,8 @@ function handler.init(env)
             items = r_items,
             generals = r_gens,
             buildings = r_builds,
-            rect_buildings = r_rect_builds
+            rect_buildings = r_rect_builds,
+            rect_building_sub = r_rect_building_sub
         }
     end
 

@@ -3,18 +3,18 @@ local skynet = require "skynet"
 local handler = {}
 
 function handler.init(env)
-    local REQUEST = env.REQUEST
-    local data = env.data
-    local sharedata = env.sharedata
-    local DataWrapper = env.DataWrapper
-    local save_items = env.save_items
-    local send_package = env.send_package
+    local m_REQUEST = env.envREQUEST
+    local m_UserData = env.envUserData
+    local m_sharedata = env.envSharedata
+    local m_DataWrapper = env.envDataWrapper
+    local m_save_items = env.envSaveItems
+    local m_send_package = env.envSendPackage
     
     -- 建造建筑
-    function REQUEST.build(args)
-        local user_id = env.get_user_id()
-        local db = env.get_db()
-        local request = env.get_request()
+    function m_REQUEST.build(args)
+        local user_id = env.envFuncGetUserId()
+        local db_pool_service = env.envFuncGetDbPool()
+        local request = env.envFuncGetRequest()
 
         local type = args.type
         if not type then return { ok = false } end
@@ -24,7 +24,7 @@ function handler.init(env)
         local region = args.region or 1
         local now = os.time()
     
-        local s_buildings = sharedata.query("s_buildings")
+        local s_buildings = m_sharedata.query("s_buildings")
         local building_conf = s_buildings[type]
         
         if not building_conf then
@@ -37,36 +37,35 @@ function handler.init(env)
         if building_conf.cost_item3 > 0 then table.insert(costs, {id=building_conf.cost_item3, num=building_conf.cost_num3}) end
     
         for _, c in ipairs(costs) do
-            local current = data.items[c.id] or 0
+            local current = m_UserData.m_itemsMap[c.id] or 0
             if current < c.num then
                 return { ok = false }
             end
         end
     
         for _, c in ipairs(costs) do
-            data.items[c.id] = data.items[c.id] - c.num
+            m_UserData.m_itemsMap[c.id] = m_UserData.m_itemsMap[c.id] - c.num
         end
-        save_items() -- Save items immediately
+        m_save_items() -- Save items immediately
     
         -- Push updated items
         local list = {}
-        for id, amount in pairs(data.items) do
+        for id, amount in pairs(m_UserData.m_itemsMap) do
             table.insert(list, {id=id, amount=amount})
         end
         local content = request("push_items", { items = list })
-        send_package(content)
+        m_send_package(content)
     
         -- INSERT is still immediate because we need the ID
         local sql = string.format("INSERT INTO d_buildings (user_id, `type`, level, x, y, begin_build_time, region) VALUES (%d, %d, 1, %d, %d, %d, %d)", 
             user_id, type, x, y, now, region)
-        local res = db:query(sql)
-        if not res or res.errno then
-            skynet.error("Insert building failed: " .. (res.err or "unknown"))
+        local res = skynet.call(db_pool_service, "lua", "insert", sql)
+        if not res.ok then
             return { ok = false }
         end
-        
+
         local new_building_data = {
-            id = res.insert_id,
+            id = res.id,
             type = type,
             level = 1,
             x = x,
@@ -76,9 +75,10 @@ function handler.init(env)
         }
         
         -- Wrap the new building
-        local wrapper = DataWrapper.new(db, "d_buildings", "id", new_building_data)
-        table.insert(data.buildings, wrapper)
+        local wrapper = m_DataWrapper.new(db_pool_service, "d_buildings", "id", new_building_data)
+        m_UserData.m_buildingsMap[new_building_data.id] = wrapper
     
+        -- 如果是自己创建的结构 就可以直接返回 如果是map中获得的结构 就可以用wrapper:raw()
         return {
             ok = true,
             building = new_building_data
@@ -86,29 +86,25 @@ function handler.init(env)
     end
     
     -- 移动建筑
-    function REQUEST.build_move(args)
+    function m_REQUEST.build_move(args)
         local id = args.id
         local new_x = args.new_x
         local new_y = args.new_y
     
-        for _, b in ipairs(data.buildings) do
-            if b.id == id then
-                b.x = new_x 
-                b.y = new_y
-
-                return {
-                    ok = true,
-                    building = b:raw() 
-                }
-            end
+        local building = m_UserData.m_buildingsMap[id]
+        if building then
+            building.x = new_x
+            building.y = new_y
+            
+            return { ok = true, building = building:raw() }
         end
         return { ok = false }
     end
 
     -- 建造矩形
-    function REQUEST.build_rect(args)
-        local user_id = env.get_user_id()
-        local db = env.get_db()
+    function m_REQUEST.build_rect(args)
+        local user_id = env.envFuncGetUserId()
+        local db_pool_service = env.envFuncGetDbPool()
         
         local x = args.x
         local y = args.y
@@ -129,9 +125,9 @@ function handler.init(env)
         local TILE_SIZE = 30 -- Should match client TILE_SIZE
 
         -- 1. Check collision with existing buildings
-        local s_buildings = sharedata.query("s_buildings")
+        local s_buildings = m_sharedata.query("s_buildings")
         
-        for _, b in ipairs(data.buildings) do
+        for _, b in pairs(m_UserData.m_buildingsMap) do
             if b.region == region then
                 local def = s_buildings[b.type]
                 if def then
@@ -154,8 +150,8 @@ function handler.init(env)
         end
 
         -- 2. Check collision with existing rects
-        if data.rect_buildings then
-            for _, r in ipairs(data.rect_buildings) do
+        if m_UserData.m_rect_buildingsMap then
+            for _, r in pairs(m_UserData.m_rect_buildingsMap) do
                  if (r.region or 2) == region then
                      local rMinX = r.x
                      local rMaxX = r.x + r.width
@@ -172,14 +168,14 @@ function handler.init(env)
 
         local sql = string.format("INSERT INTO d_rect_building (user_id, x, y, width, height, region, type) VALUES (%d, %d, %d, %d, %d, %d, %d)",
             user_id, x, y, width, height, region, type)
-        local res = db:query(sql)
-        if not res or res.errno then
+        local res = skynet.call(db_pool_service, "lua", "insert", sql)
+        if not res.ok then
             skynet.error("Insert rect building failed: " .. (res.err or "unknown"))
             return { ok = false }
         end
         
         local new_rect = {
-            id = res.insert_id,
+            id = res.id,
             x = x,
             y = y,
             width = width,
@@ -189,29 +185,22 @@ function handler.init(env)
         }
         
         -- Add to memory
-        if not data.rect_buildings then data.rect_buildings = {} end
-        table.insert(data.rect_buildings, DataWrapper.new(db, "d_rect_building", "id", new_rect))
-
-        return { ok = true, rect_building = new_rect }
+        if not m_UserData.m_rect_buildingsMap then m_UserData.m_rect_buildingsMap = {} end
+        m_UserData.m_rect_buildingsMap[new_rect.id] = m_DataWrapper.new(db_pool_service, "d_rect_building", "id", new_rect)
+        return { ok = true, rect_building = new_rect}
     end
 
     -- 移动矩形
-    function REQUEST.build_rect_move(args)
+    function m_REQUEST.build_rect_move(args)
         local id = args.id
         local x = args.x
         local y = args.y
 
-        local s_buildings = sharedata.query("s_buildings")
+        local s_buildings = m_sharedata.query("s_buildings")
         local TILE_SIZE = 30
         
         -- Find existing rect
-        local rect = nil
-        for _, r in ipairs(data.rect_buildings) do
-            if r.id == id then
-                rect = r
-                break
-            end
-        end
+        local rect = m_UserData.m_rect_buildingsMap[id]
         if not rect then return { ok = false } end
 
         local width = rect.width
@@ -225,7 +214,7 @@ function handler.init(env)
 
         -- Collision Check (Copy from build_rect)
          -- 1. Check collision with existing buildings
-        for _, b in ipairs(data.buildings) do
+        for _, b in pairs(m_UserData.m_buildingsMap) do
             if b.region == region then
                 local def = s_buildings[b.type]
                 if def then
@@ -243,8 +232,8 @@ function handler.init(env)
         end
 
         -- 2. Check collision with existing rects (Exclude self)
-        if data.rect_buildings then
-            for _, r in ipairs(data.rect_buildings) do
+        if m_UserData.m_rect_buildingsMap then
+            for _, r in pairs(m_UserData.m_rect_buildingsMap) do
                  if r.id ~= id and (r.region or 2) == region then
                      local rMinX = r.x
                      local rMaxX = r.x + r.width
@@ -264,24 +253,14 @@ function handler.init(env)
     end
 
     -- 删除矩形
-    function REQUEST.build_rect_del(args)
+    function m_REQUEST.build_rect_del(args)
         local id = args.id
-        local db = env.get_db()
+        local db_pool_service = env.envFuncGetDbPool()
 
         local sql = string.format("DELETE FROM d_rect_building WHERE id=%d", id)
-        local res = db:query(sql)
-        if not res or res.errno then
-            return { ok = false }
-        end
-        
+        skynet.call(db_pool_service, "lua", "execute", sql)
         -- Remove from memory
-        for i, r in ipairs(data.rect_buildings) do
-            if r.id == id then
-                table.remove(data.rect_buildings, i)
-                break
-            end
-        end
-        
+        m_UserData.m_rect_buildingsMap[id] = nil
         return { ok = true, id = id }
     end
 
