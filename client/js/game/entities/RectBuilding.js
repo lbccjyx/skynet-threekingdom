@@ -1,6 +1,7 @@
 import { Entity } from './Entity.js';
 import { RenderEngine } from '../../render/render_engine.js';
 import { TILE_SIZE } from '../../core/config.js';
+import { Game } from '../../core/state.js';
 
 export class RectBuilding extends Entity {
     constructor(data, wallMap = null) {
@@ -8,18 +9,97 @@ export class RectBuilding extends Entity {
         this.type = 'rect_building';
         this.width = data.width;
         this.height = data.height;
-        this.wallMap = wallMap; // Shared reference to wall map for connectivity
+        this.wallMap = wallMap; // Shared reference to wall map for connectivity (Legacy support)
+        this.subRenderIds = []; // Track sub-building render IDs
     }
 
     createMesh() {
         const definitions = window.RECT_BUILDING_DEFINITIONS || {};
+        const def = definitions[this.data.type] || {};
+        const subs = this.getSubBuildings();
+
+        if (subs.length > 0) {
+            // New Mode: Render sub-buildings
+            this.renderSubBuildings(subs);
+            
+            // Render a transparent base for selection/hit detection
+            this.mesh = RenderEngine.createEntity(
+                this.getRenderId(),
+                null, // No image
+                this.width,
+                this.height,
+                this.x,
+                this.y
+            );
+            // Make it invisible but interactive (if RenderEngine supports it, otherwise use very low opacity)
+            if (this.mesh && this.mesh.material) {
+                this.mesh.material.opacity = 0.01; 
+                this.mesh.visible = true;
+            }
+
+        } else {
+            // Legacy Mode: Fallback to old rendering if no subs found
+            this.createLegacyMesh(def);
+        }
+    }
+
+    getSubBuildings() {
+        if (!Game.data.rect_buildings_sub) return [];
+        
+        return Game.data.rect_buildings_sub.filter(sub => {
+            return sub.x >= this.x && 
+                   sub.x < this.x + this.width && 
+                   sub.y >= this.y && 
+                   sub.y < this.y + this.height;
+        });
+    }
+
+    renderSubBuildings(subs) {
+        subs.forEach(sub => {
+            const buildDef = window.BUILDING_DEFINITIONS[sub.rect_building_id];
+            if (!buildDef) return;
+
+            const subId = `rect_sub_${sub.id}_${sub.x}_${sub.y}`;
+            this.subRenderIds.push(subId);
+
+            // Determine GLB path
+            let glbPath = buildDef.image; // Default
+            if (buildDef.imageDir) {
+                // Ensure directory path ends with slash if needed, or just append index
+                // Prompt: "imageDir的（index）.glb"
+                // Checking StaticData, imageDir is like "assets/glb_file/house/22/"
+                // So we assume it ends with '/'
+                glbPath = `${buildDef.imageDir}${sub.building_index}.glb`;
+            }
+
+            // Using createFlatEntity to load GLB
+            // We treat each sub as a 1x1 or whatever size it is defined as
+            // But wait, sub.building_index implies variant. 
+            // We use RenderEngine to create it.
+            // sub.x, sub.y are world coordinates.
+            // buildDef.width/height might be relevant for scaling?
+            // Usually subs are 1x1 tiles or props.
+            // But buildDef has width/height.
+            // Let's pass buildDef width/height.
+            
+            RenderEngine.createFlatEntity(
+                subId,
+                buildDef.width * TILE_SIZE,
+                buildDef.height * TILE_SIZE,
+                sub.x,
+                sub.y,
+                sub.rect_building_id, // Type ID
+                glbPath
+            );
+        });
+    }
+
+    createLegacyMesh(def) {
         const WALL_TYPE = 3; 
 
         const cx = this.x + this.width / 2;
         const cy = this.y + this.height / 2;
         
-        const def = definitions[this.data.type] || {};
-
         let customProcess = null;
         let glbFiles = def.image;
 
@@ -44,7 +124,7 @@ export class RectBuilding extends Entity {
         );
     }
 
-    // Helper for Wall Connectivity
+    // Helper for Wall Connectivity (Legacy)
     processWallTile(models, wx, wy, config) {
         // If no wallMap provided, cannot calculate connectivity properly
         if (!this.wallMap) return [];
@@ -73,9 +153,6 @@ export class RectBuilding extends Entity {
         }
         
         if (!pillarModel) {
-            // Placeholder logic if needed, but RenderEngine handles fallback usually? 
-            // Actually RenderEngine expects us to return pieces if customProcess is used.
-            // Let's implement simple fallback.
             const geo = new THREE.BoxGeometry(TILE_SIZE * 0.4, TILE_SIZE, TILE_SIZE * 0.4);
             const mat = new THREE.MeshLambertMaterial({ color: 0x555555 });
             const center = new THREE.Mesh(geo, mat);
@@ -120,5 +197,27 @@ export class RectBuilding extends Entity {
 
         return pieces;
     }
-}
 
+    unmount() {
+        // Cleanup sub-buildings
+        if (this.subRenderIds) {
+            this.subRenderIds.forEach(id => {
+                const obj = RenderEngine.objects[id];
+                if (obj) {
+                    RenderEngine.worldGroup.remove(obj);
+                    // Dispose geometry/materials if needed
+                    // RenderEngine.objects[id] might be a Group or Mesh
+                    // Ideally call a RenderEngine helper to remove entity by ID
+                    if (obj.geometry) obj.geometry.dispose();
+                    if (obj.material) {
+                         if (Array.isArray(obj.material)) obj.material.forEach(m=>m.dispose());
+                         else obj.material.dispose();
+                    }
+                    delete RenderEngine.objects[id];
+                }
+            });
+            this.subRenderIds = [];
+        }
+        super.unmount();
+    }
+}

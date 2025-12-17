@@ -17,7 +17,7 @@ export function updateGameState(data) {
     if (data.generals) Game.data.generals = data.generals;
     if (data.buildings) Game.data.buildings = data.buildings;
     if (data.rect_buildings) Game.data.rect_buildings = data.rect_buildings;
-    if (data.rect_building_sub) Game.data.rect_building_sub = data.rect_building_sub;
+    if (data.rect_buildings_sub) Game.data.rect_buildings_sub = data.rect_buildings_sub;
     
     updateUI();
 }

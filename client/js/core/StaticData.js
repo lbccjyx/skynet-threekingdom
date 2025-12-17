@@ -24,6 +24,13 @@ BUILDING_DEFINITIONS = {
     404: {key: 404, name: '房子5X4', imageDir: 'assets/glb_file/house/54', width: 7, height: 5, cost_item: 1, cost_num: 10, cost_item2: 2, cost_num2: 10, cost_item3: 3, cost_num3: 10 , build_sec: 10, destroy_sec: 10}
 };
 
+RECT_BUILDING_TOOLBAR = {
+    1: {key: 1, name: '农田'},
+    2: {key: 2, name: '道路'},
+    3: {key: 3, name: '城墙'},
+    4: {key: 4, name: '居民区'},
+};
+
 RECT_BUILDING_DEFINITIONS = {
     1: {key: 1, name: '农田', width: 1, height: 1, sub_buildings: 101, sub_max_num: 1},
     2: {key: 2, name: '道路', width: 1, height: 1, sub_buildings: 301, sub_max_num: 1},
@@ -50,7 +57,7 @@ TOOLBAR_CONFIG = [
         name: '圈地', 
         type: 'submenu', 
         menuId: 'submenu-zoning', 
-        dataSource: 'RECT_BUILDING_DEFINITIONS',
+        dataSource: 'RECT_BUILDING_TOOLBAR',
         handler: 'selectZoning'
     },
     { 
