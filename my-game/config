@@ -21,4 +21,4 @@ mysql_db = "ThreeKingdom"
 mysql_user = "skynet"
 mysql_pwd = "Password123"
 mysql_pool_size = 10
-
+TILE_SIZE = 30

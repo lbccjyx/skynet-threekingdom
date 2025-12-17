@@ -10,7 +10,6 @@ INSERT INTO s_items (id, name, description) VALUES
 truncate table s_buildings;
 insert into s_buildings (`id`, `name`, `level`,`width`, `height`, `cost_item`, `cost_num`, `cost_item2`, `cost_num2`, `cost_item3`, `cost_num3`, `build_sec`, `destroy_sec`)
 values 
-('1','民房',    1, 3,2, 1, 10, 2, 10, 3, 10, 10, 10),
 ('3','伐木场',  1, 3,2, 1, 10, 2, 10, 3, 10, 10, 10),
 ('4','采石场',  1, 3,2, 1, 10, 2, 10, 3, 10, 10, 10),
 ('5','粮仓',    1, 3,2, 1, 10, 2, 10, 3, 10, 10, 10),

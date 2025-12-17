@@ -209,6 +209,7 @@ local env = {
 require("agent.d_login").init(env)
 require("agent.general_handler").init(env)
 require("agent.d_buildings").init(env)
+require("agent.d_rect_buildings").init(env)
 
 local function dispatch(type, name, args, response)
     if type == "REQUEST" then

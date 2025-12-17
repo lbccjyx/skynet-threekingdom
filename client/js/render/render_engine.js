@@ -1,4 +1,4 @@
-import { TILE_SIZE, CAMERA_CONFIG, LIGHT_CONFIG, GRID_CONFIG, CITY_BOUNDARY } from '../core/config.js';
+import { TILE_SIZE, CAMERA_CONFIG, LIGHT_CONFIG, GRID_CONFIG, CITY_BOUNDARY,RECT_FARM, RECT_LOAD, RECT_WALL, RECT_HOUSE  } from '../core/config.js';
 import { log } from '../core/utils.js';
 
 export const RenderEngine = {
@@ -187,12 +187,12 @@ export const RenderEngine = {
 
         const group = new THREE.Group();
         // 这里是相当于3D 的x轴 Y轴 z轴的初始位置
-        if(type === RECT_BUILDING_DEFINITIONS[1].key ) {
+        if(type === RECT_FARM ) {
             group.position.set(x, -13, y);
-        } else if(type === RECT_BUILDING_DEFINITIONS[3].key)
+        } else if(type === RECT_WALL)
         {
             group.position.set(x, -90, y);
-        }else if(type === RECT_BUILDING_DEFINITIONS[4].key) {
+        }else if(type === RECT_HOUSE) {
             group.position.set(x, -10, y);
         } else{
             group.position.set(x, 0, y);
@@ -224,7 +224,7 @@ export const RenderEngine = {
             let liftY = 0;
             let rotationY = 0;
 
-            if(type === RECT_BUILDING_DEFINITIONS[3].key && cols > rows && !customProcess) {
+            if(type === RECT_WALL && cols > rows && !customProcess) {
                 rotationY = Math.PI / 2;
             }
 
@@ -239,7 +239,7 @@ export const RenderEngine = {
                  }
 
                  // 民房的特殊处理
-                 if(type === RECT_BUILDING_DEFINITIONS[4].key) {
+                 if(type === RECT_HOUSE) {
                     scaleX = scaleX/1.5;
                     scaleZ = scaleZ/1.2;
                     scaleY = scaleY/2;
@@ -279,7 +279,7 @@ export const RenderEngine = {
                     if (mainModel) {
                         const clone = mainModel.clone();
 
-                        if(type === RECT_BUILDING_DEFINITIONS[3].key) {
+                        if(type === RECT_WALL) {
                             clone.scale.set(scaleX , scaleY, scaleZ);
                         }else{
                             clone.scale.set(scaleX, scaleY, scaleZ);
@@ -318,9 +318,9 @@ export const RenderEngine = {
                         this.modelCache[path].traverse((child) => {
                             if (child.isMesh && child.material) {
 
-                                if(type === RECT_BUILDING_DEFINITIONS[4].key) {
+                                if(type === RECT_HOUSE) {
                                     child.material.color.multiplyScalar(2);
-                                }else if (type === RECT_BUILDING_DEFINITIONS[3].key) {
+                                }else if (type === RECT_WALL) {
                                     child.material.color.multiplyScalar(4); 
                                 }else{
                                     child.material.color.multiplyScalar(5); 
@@ -338,7 +338,7 @@ export const RenderEngine = {
         };
 
         if (typeof THREE.GLTFLoader !== 'undefined') {
-            if (type === RECT_BUILDING_DEFINITIONS[3].key && Array.isArray(glb_file)) {
+            if (type === RECT_WALL && Array.isArray(glb_file)) {
                 Promise.all(glb_file.map(f => loadSingleModel(f))).then(models => {
                     if (models && this.objects[id] === group) {
                         populate(models); // Pass array

@@ -55,3 +55,9 @@ export const CITY_BOUNDARY = {
     minY: -300,
     maxY: 450
 };
+
+
+export const RECT_FARM = 1;
+export const RECT_LOAD = 2;
+export const RECT_WALL= 3;
+export const RECT_HOUSE = 4;

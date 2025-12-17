@@ -2,7 +2,8 @@
 
 
 ## 需求
-    服务端修改。当客户端发起proto(build_rect)请求的时候，相当于指定了建筑的允许区间A。应该从s_rect_building表中获得允许生成的所有子建筑，并且根据子建筑的实际占用去规划区间A的分块(分块尽量占更多的格子)，然后随机一个s_rect_building.sub_max_num 作为d_rect_building_sub.building_index 然后通过proto(build_rect_sub)下发给客户端所有这次新增的d_rect_building_sub
+    客户端的build_rect展示需要变化。原先是整个rect_building都展示RECT_BUILDING_DEFINITIONS的image,现在服务端新下发了proto：build_rect_sub 这是rect_building内部的子建筑。 build_rect_sub.rect_building_id 对应BUILDING_DEFINITIONS的key 然后 build_rect_sub.building_index 对应的是BUILDING_DEFINITIONS[key].imageDir的（build_rect_sub.building_index）.glb  这样一个rect_building的区域就变成了多种不同的建筑。
+
 
 ## 主要要求 
     代码和函数不能略写，你可以一个一个文件写。写的不好的，还可以反回来写。根据我的要求去设计表结构。
