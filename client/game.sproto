@@ -112,9 +112,10 @@ build_move 5 {
 .RectBuildingSub {
     id 0 : integer
     rect_building_id 1 : integer
-    x 2 : integer
-    y 3 : integer
-    building_index 4 : integer
+    building_type 2: integer
+    x 3 : integer
+    y 4 : integer
+    building_index 5 : integer
 }
 
 build_rect 6{

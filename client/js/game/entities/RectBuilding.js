@@ -2,6 +2,8 @@ import { Entity } from './Entity.js';
 import { RenderEngine } from '../../render/render_engine.js';
 import { TILE_SIZE } from '../../core/config.js';
 import { Game } from '../../core/state.js';
+import { log } from '../../core/utils.js';
+import { SubBuildingRenderer } from '../sub_building_renderer.js';
 
 export class RectBuilding extends Entity {
     constructor(data, wallMap = null) {
@@ -56,7 +58,7 @@ export class RectBuilding extends Entity {
 
     renderSubBuildings(subs) {
         subs.forEach(sub => {
-            const buildDef = window.BUILDING_DEFINITIONS[sub.rect_building_id];
+            const buildDef = window.BUILDING_DEFINITIONS[sub.building_type];
             if (!buildDef) return;
 
             const subId = `rect_sub_${sub.id}_${sub.x}_${sub.y}`;
@@ -65,31 +67,16 @@ export class RectBuilding extends Entity {
             // Determine GLB path
             let glbPath = buildDef.image; // Default
             if (buildDef.imageDir) {
-                // Ensure directory path ends with slash if needed, or just append index
-                // Prompt: "imageDir的（index）.glb"
-                // Checking StaticData, imageDir is like "assets/glb_file/house/22/"
-                // So we assume it ends with '/'
-                glbPath = `${buildDef.imageDir}${sub.building_index}.glb`;
+                glbPath = `${buildDef.imageDir}/${sub.building_index}.glb`;
             }
-
-            // Using createFlatEntity to load GLB
-            // We treat each sub as a 1x1 or whatever size it is defined as
-            // But wait, sub.building_index implies variant. 
-            // We use RenderEngine to create it.
-            // sub.x, sub.y are world coordinates.
-            // buildDef.width/height might be relevant for scaling?
-            // Usually subs are 1x1 tiles or props.
-            // But buildDef has width/height.
-            // Let's pass buildDef width/height.
-            
-            RenderEngine.createFlatEntity(
+            log("glbPath: " + glbPath);
+            SubBuildingRenderer.render(
                 subId,
-                buildDef.width * TILE_SIZE,
-                buildDef.height * TILE_SIZE,
                 sub.x,
                 sub.y,
-                sub.rect_building_id, // Type ID
-                glbPath
+                glbPath,
+                buildDef.width,
+                buildDef.height
             );
         });
     }

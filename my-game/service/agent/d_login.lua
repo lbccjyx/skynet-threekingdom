@@ -45,7 +45,7 @@ function handler.init(env)
             generals = r_gens,
             buildings = r_builds,
             rect_buildings = r_rect_builds,
-            rect_building_sub = r_rect_building_sub
+            rect_buildings_sub = r_rect_building_sub
         }
     end
 

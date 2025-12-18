@@ -128,6 +128,7 @@ CREATE TABLE d_rect_building_sub (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     `rect_building_id` INT NOT NULL comment "矩形面积id",
+    `building_type` INT NOT NULL comment "s_buildings:id",
     `x` INT NOT NULL comment "左下角坐标",
     `y` INT NOT NULL,
     `building_index` INT NOT NULL comment "第N个样式"

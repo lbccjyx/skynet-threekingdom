@@ -116,13 +116,6 @@ function handler.init(env)
             table.insert(values_list, string.format("(%d, %d, %d, %d, %d)", 
                 user_id, rect_id, final_x, final_y, item.variant_index))
             
-            -- 预先构建返回对象 (注意：这里无法获取准确的ID，除非再次查询或依靠数据库自增逻辑推断)
-            -- 通常对于批量插入，获取ID比较麻烦。
-            -- 如果客户端需要ID，可能需要重新查询。
-            -- 暂时先不返回ID，或者如果业务强烈依赖ID，则不能批量插入，只能逐个插入。
-            -- 考虑到"生成所有子建筑... 下发给客户端所有这次新增的"，客户端通常需要ID来索引。
-            -- 如果必须返回ID，单条插入更安全。
-            -- 这里回退到单条插入，但增加手动回滚。
         end
 
         -- 回退到逐个插入以获取ID
@@ -134,9 +127,9 @@ function handler.init(env)
 
             local sql = string.format([[
                 INSERT INTO d_rect_building_sub 
-                (user_id, rect_building_id, x, y, building_index) 
-                VALUES (%d, %d, %d, %d, %d)]],
-                user_id, rect_id, center_x, center_y, item.variant_index)
+                (user_id, rect_building_id, building_type, x, y, building_index) 
+                VALUES (%d, %d, %d, %d, %d, %d)]],
+                user_id, rect_id, item.config.sub_buildings, center_x, center_y, item.variant_index)
             
             local res = skynet.call(db_pool_service, "lua", "insert", sql)
             if res.ok then
@@ -187,12 +180,12 @@ function handler.init(env)
         m_UserData.m_rect_buildingsMap[new_rect.id] = m_DataWrapper.new(db_pool_service, "d_rect_building", "id", new_rect)
         
         -- 更新小建筑内存数据
-        if not m_UserData.m_rect_buildings_subMap then 
-            m_UserData.m_rect_buildings_subMap = {} 
+        if not m_UserData.m_rect_building_subMap then 
+            m_UserData.m_rect_building_subMap = {} 
         end
         
         for _, sub in ipairs(sub_buildings) do
-            m_UserData.m_rect_buildings_subMap[sub.id] = m_DataWrapper.new(db_pool_service, "d_rect_building_sub", "id", sub)
+            m_UserData.m_rect_building_subMap[sub.id] = m_DataWrapper.new(db_pool_service, "d_rect_building_sub", "id", sub)
         end
     end
 
@@ -282,13 +275,6 @@ function handler.init(env)
         local sub_buildings, sub_error = insert_sub_buildings(db_pool_service, user_id, new_rect.id, x, y, layout)
         
         if not sub_buildings then
-            -- 手动回滚：删除已创建的主矩形
-            -- 注意：如果有部分子建筑插入成功，也应该删除。
-            -- 这里的 insert_sub_buildings 如果失败返回 nil, error。
-            -- 如果是逐个插入，可能部分成功。我们需要在 insert_sub_buildings 内部清理或者在这里清理。
-            -- 简单起见，在这里删除主矩形。由于没有级联删除，应该先删子建筑。
-            -- 但由于 insert_sub_buildings 返回 nil，我们不知道哪些插入成功了。
-            -- 改进 insert_sub_buildings: 失败时自动清理已插入的。
             
             -- 补救措施：删除 rect_id 关联的所有 sub
             local clean_sql = string.format("DELETE FROM d_rect_building_sub WHERE rect_building_id=%d", new_rect.id)
@@ -304,7 +290,9 @@ function handler.init(env)
         update_memory_data(new_rect, sub_buildings, db_pool_service)
         
         -- 发送通知
-        env.envSendPackage({type = "build_rect_sub", rect_buildings_sub = sub_buildings})
+        local request = env.envFuncGetRequest()
+        local content = request("build_rect_sub", { rect_buildings_sub = sub_buildings })
+        m_send_package(content)
         
         return { 
             ok = true, 
@@ -376,8 +364,8 @@ function handler.init(env)
         rect.y = y
         
         -- 更新内存: 子建筑
-        if m_UserData.m_rect_buildings_subMap then
-            for _, sub in pairs(m_UserData.m_rect_buildings_subMap) do
+        if m_UserData.m_rect_building_subMap then
+            for _, sub in pairs(m_UserData.m_rect_building_subMap) do
                 if sub.rect_building_id == id then
                     sub.x = sub.x + dx
                     sub.y = sub.y + dy
@@ -405,15 +393,15 @@ function handler.init(env)
         m_UserData.m_rect_buildingsMap[id] = nil
         
         -- 删除内存: 子建筑
-        if m_UserData.m_rect_buildings_subMap then
+        if m_UserData.m_rect_building_subMap then
             local sub_ids_to_remove = {}
-            for sub_id, sub in pairs(m_UserData.m_rect_buildings_subMap) do
+            for sub_id, sub in pairs(m_UserData.m_rect_building_subMap) do
                 if sub.rect_building_id == id then
                     table.insert(sub_ids_to_remove, sub_id)
                 end
             end
             for _, sub_id in ipairs(sub_ids_to_remove) do
-                m_UserData.m_rect_buildings_subMap[sub_id] = nil
+                m_UserData.m_rect_building_subMap[sub_id] = nil
             end
         end
 
