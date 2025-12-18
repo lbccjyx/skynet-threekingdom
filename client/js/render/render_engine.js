@@ -162,6 +162,9 @@ export const RenderEngine = {
         mesh.position.set(x, 1, y); // Lift slightly above 0 to avoid z-fighting with ground if any
         mesh.quaternion.copy(this.camera.quaternion);
         mesh.userData = { id: id };
+        // Only add extra data if explicitly provided or handled externally
+        // We will rely on RectBuilding.js to add the necessary userData for dragging
+        
         this.worldGroup.add(mesh);
         this.objects[id] = mesh;
         return mesh;

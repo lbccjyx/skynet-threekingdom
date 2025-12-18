@@ -128,7 +128,6 @@ export const BuildRect = {
                 }
                 this.startPos = null;
                 
-                // Refresh view
                 updateGameView();
                 
                 this.stop();

@@ -33,6 +33,22 @@ export function handlePush(name, args) {
         } else {
             log("Received empty items push");
         }
+    } else if (name === "build_rect_sub") {
+        if (args && args.rect_buildings_sub) {
+            if (!Game.data.rect_buildings_sub) {
+                Game.data.rect_buildings_sub = [];
+            }
+            args.rect_buildings_sub.forEach(newSub => {
+                const idx = Game.data.rect_buildings_sub.findIndex(s => s.id === newSub.id);
+                if (idx >= 0) {
+                    Game.data.rect_buildings_sub[idx] = newSub;
+                } else {
+                    Game.data.rect_buildings_sub.push(newSub);
+                }
+            });
+            log("Rect Sub Buildings updated count: " + args.rect_buildings_sub.length);
+            updateUI();
+        }
     } else {
         log("Unknown push: " + name);
     }

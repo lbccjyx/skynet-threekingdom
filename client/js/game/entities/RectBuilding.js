@@ -30,30 +30,52 @@ export class RectBuilding extends Entity {
                 null, // No image
                 this.width,
                 this.height,
-                this.x,
-                this.y
+                this.x + this.width / 2, // Centered X
+                this.y + this.height / 2 // Centered Y
             );
-            // Make it invisible but interactive (if RenderEngine supports it, otherwise use very low opacity)
+            
+            // Store dimensions in userData for drag logic
+            // This is CRITICAL for d_build_rect_input.js to work properly
+            if (this.mesh) {
+                this.mesh.userData.width = this.width;
+                this.mesh.userData.height = this.height;
+                this.mesh.userData.type = 'rect_building'; // Must match check in d_build_rect_input
+                
+                // Store original data needed for logic
+                this.mesh.userData.data = this.data; 
+            }
+
+            // Adjust rotation to match isometric view (horizontal on ground)
+            // RenderEngine.createEntity sets rotation to match camera by default for "billboard" effect or upright sprites
+            // But we want this to be flat on the ground like a rug
+            if (this.mesh) {
+                this.mesh.rotation.x = -Math.PI / 2;
+                this.mesh.rotation.y = 0;
+                this.mesh.rotation.z = 0;
+                this.mesh.quaternion.setFromEuler(this.mesh.rotation);
+            }
+
             if (this.mesh && this.mesh.material) {
-                this.mesh.material.opacity = 0.01; 
-                this.mesh.visible = true;
+                this.mesh.material.opacity = 0.3; // Lightly visible
+                this.mesh.material.color.setHex(0xaaaaaa); // Grayish
             }
 
         } else {
-            // Legacy Mode: Fallback to old rendering if no subs found
             this.createLegacyMesh(def);
         }
     }
 
     getSubBuildings() {
         if (!Game.data.rect_buildings_sub) return [];
-        
-        return Game.data.rect_buildings_sub.filter(sub => {
+        const subs = Game.data.rect_buildings_sub.filter(sub => {
+            // log(`Sub check: sub(${sub.x}, ${sub.y})`); // Uncomment to see all sub coords
             return sub.x >= this.x && 
                    sub.x < this.x + this.width && 
                    sub.y >= this.y && 
                    sub.y < this.y + this.height;
         });
+
+        return subs;
     }
 
     renderSubBuildings(subs) {
@@ -82,6 +104,14 @@ export class RectBuilding extends Entity {
     }
 
     createLegacyMesh(def) {
+        // Safety check: if no definition or image, skip legacy mesh creation
+        // This can happen during transient states where sub-buildings are updated but parent rect isn't yet
+        // leading to getSubBuildings() returning empty because of coordinate mismatch.
+        if (!def || !def.image) {
+            // log("RectBuilding: No legacy definition found for type " + this.data.type);
+            return;
+        }
+
         const WALL_TYPE = 3; 
 
         const cx = this.x + this.width / 2;
@@ -185,6 +215,7 @@ export class RectBuilding extends Entity {
         return pieces;
     }
 
+    // 删除的时候会调用
     unmount() {
         // Cleanup sub-buildings
         if (this.subRenderIds) {

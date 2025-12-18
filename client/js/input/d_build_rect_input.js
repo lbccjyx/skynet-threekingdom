@@ -25,11 +25,17 @@ export const BuildRectInput = {
             e.stopPropagation();
             if(confirm("确定删除圈地吗?")) {
                 sendRequest('build_rect_del', { id: id }, (res) => {
-                    if (res.ok) {
-                         Game.data.rect_buildings = Game.data.rect_buildings.filter(r => r.id !== id);
-                         updateGameView();
-                         log("已删除圈地");
-                    } else {
+                if (res.ok) {
+                     Game.data.rect_buildings = Game.data.rect_buildings.filter(r => r.id !== id);
+
+                     // Also cleanup sub-buildings belonging to this rect
+                     if (Game.data.rect_buildings_sub) {
+                         Game.data.rect_buildings_sub = Game.data.rect_buildings_sub.filter(s => s.rect_building_id !== id);
+                     }
+
+                     updateGameView();
+                     log("已删除圈地");
+                } else {
                         log("删除失败");
                     }
                 });
@@ -52,9 +58,11 @@ export const BuildRectInput = {
         // We want to snap x, y (top-left) to grid.
         // let's calculate offset from center
         const cx = obj.position.x;
+        // In 3D space, Z is the depth, so use Z for 2D Y calculation
         const cy = obj.position.z;
 
         Game.dragState.offsetX = worldPos.x - cx;
+        // Correct offset calculation using Z as Y in isometric/top-down view logic
         Game.dragState.offsetY = worldPos.y - cy;
         
         // Show Ghost
@@ -62,6 +70,7 @@ export const BuildRectInput = {
         const h = obj.userData.height;
         const tlX = cx - w / 2;
         const tlY = cy - h / 2;
+        
         BuildRect.updateGhost(tlX, tlY, w, h);
         
         RenderEngine.setGridVisibility(true);

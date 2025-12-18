@@ -159,7 +159,7 @@ build_rect_del 8 {
 }
 
 build_rect_sub 9 {
-    response {
+    request {
         rect_buildings_sub 0 : *RectBuildingSub
     }
 }

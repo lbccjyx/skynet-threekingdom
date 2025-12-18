@@ -22,7 +22,7 @@ export const SubBuildingRenderer = {
         // Create container group
         const group = new THREE.Group();
         group.position.set(x, -10, y);
-        group.userData = { id: id, glb_file: glbPath, type: 'sub_building' };
+        group.userData = { id: id, glb_file: glbPath, type: 'rect_building', width: width, height: height };
 
         // Register with RenderEngine
         RenderEngine.worldGroup.add(group);

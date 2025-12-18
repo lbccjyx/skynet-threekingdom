@@ -72,9 +72,6 @@ export function switchView(viewName) {
 
 // 供外部调用的刷新接口
 export function updateGameView() {
-    // Re-enter current scene to refresh entities
-    // This is a simple way to handle data updates: rebuild the scene.
-    // Optimization: Diff update
     const current = sceneManager.getCurrentScene();
     if (current) {
         current.enter();

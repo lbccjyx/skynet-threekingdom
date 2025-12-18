@@ -373,6 +373,13 @@ function handler.init(env)
             end
         end
         
+        local r_rect_building_sub = {}
+        for _, sub in pairs(m_UserData.m_rect_building_subMap) do table.insert(r_rect_building_sub, sub:raw()) end
+        
+        -- 发送通知
+        local request = env.envFuncGetRequest()
+        local content = request("build_rect_sub", { rect_buildings_sub = r_rect_building_sub})
+        m_send_package(content)
         return { ok = true, rect_building = rect:raw() }
     end
 

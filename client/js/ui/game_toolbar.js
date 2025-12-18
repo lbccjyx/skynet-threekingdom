@@ -225,6 +225,11 @@ export const GameToolbar = {
                     }
 
                     Game.data.rect_buildings = Game.data.rect_buildings.filter(r => r.id !== realId);
+                    
+                    if (Game.data.rect_buildings_sub) {
+                        Game.data.rect_buildings_sub = Game.data.rect_buildings_sub.filter(s => s.rect_building_id !== realId);
+                    }
+
                     RenderEngine.setGridVisibility(false);
                     updateGameView();
                     
