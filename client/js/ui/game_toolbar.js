@@ -1,6 +1,6 @@
 import { Game } from '../core/state.js';
-import { BuildRect } from '../game/build_rect.js';
-import { RenderEngine } from '../render/render_engine.js';
+import { BuildRect } from '@entities/rect_building/build_rect.js';
+import { RenderEngine } from '@render/render_engine.js';
 import { log } from '../core/utils.js';
 import { updateGameView } from '../game/game.js';
 import { GhostManager } from '../game/managers/GhostManager.js';

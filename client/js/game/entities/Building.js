@@ -1,8 +1,7 @@
 import { Entity } from './Entity.js';
-import { RenderEngine } from '../../render/render_engine.js';
-import { TILE_SIZE } from '../../core/config.js';
-import { Game } from '../../core/state.js';
-import { log } from '../../core/utils.js';
+import { RenderEngine } from '@render/render_engine.js';
+import { TILE_SIZE } from '@config';
+import { Game } from '@core/state.js';
 
 export class Building extends Entity {
     constructor(data) {

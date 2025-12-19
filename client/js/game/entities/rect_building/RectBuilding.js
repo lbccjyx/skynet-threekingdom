@@ -1,10 +1,11 @@
-import { Entity } from './Entity.js';
-import { RenderEngine } from '../../render/render_engine.js';
-import { TILE_SIZE } from '../../core/config.js';
-import { Game } from '../../core/state.js';
-import { log } from '../../core/utils.js';
-import { SubBuildingRenderer } from '../sub_building_renderer.js';
+import { Entity } from '../Entity.js';
+import { RenderEngine } from '@render/render_engine.js';
+import { TILE_SIZE } from '@config';
+import { Game } from '@core/state.js';
+import { log } from '@utils';
+import { SubBuildingRenderer } from './sub_building_renderer.js';
 
+// 此类主要用于渲染圈地，包括渲染圈地、渲染子建筑、渲染城墙等操作
 export class RectBuilding extends Entity {
     constructor(data, wallMap = null) {
         super(data);

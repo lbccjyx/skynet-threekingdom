@@ -47,6 +47,9 @@ class CORSRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def guess_type(self, path):
         """重写guess_type方法以支持更多MIME类型"""
+        if path.endswith('importmap.json'):
+            return 'application/importmap+json'
+
         base, ext = os.path.splitext(path)
         if ext in self.extensions_map:
             return self.extensions_map[ext]

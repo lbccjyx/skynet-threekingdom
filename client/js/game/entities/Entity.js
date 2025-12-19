@@ -1,5 +1,4 @@
-import { RenderEngine } from '../../render/render_engine.js';
-import { TILE_SIZE } from '../../core/config.js';
+import { RenderEngine } from '@render/render_engine.js';
 
 export const getNumberAfterUnderscore = (str) => {
     const match = str.match(/_(\d+)[^_]*$/);

@@ -1,12 +1,12 @@
 import { Game } from '../core/state.js';
-import { RenderEngine } from '../render/render_engine.js';
+import { RenderEngine } from '@render/render_engine.js';
 import { sendRequest } from '../core/api.js';
-import { log } from '../core/utils.js';
-import { updateGameView } from '../game/game.js';
-import { GhostManager } from '../game/managers/GhostManager.js';
-import { CITY_BOUNDARY } from '../core/config.js';
-import { TILE_SIZE } from '../core/config.js';
-import { getNumberAfterUnderscore } from '../game/entities/Entity.js';
+import { log } from '@utils';
+import { updateGameView } from '@game/game.js';
+import { GhostManager } from '@game/managers/GhostManager.js';
+import { CITY_BOUNDARY } from '@config';
+import { TILE_SIZE } from '@config';
+import { getNumberAfterUnderscore } from '@entities/Entity.js';
 
 export const BuildingInput = {
     // Handle Context Menu for Building Placement

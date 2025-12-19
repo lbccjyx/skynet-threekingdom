@@ -1,10 +1,10 @@
 import { BaseScene } from './BaseScene.js';
-import { Game } from '../../core/state.js';
-import { Building } from '../entities/Building.js';
-import { RectBuilding } from '../entities/RectBuilding.js';
-import { General } from '../entities/General.js';
-import { TILE_SIZE } from '../../core/config.js';
-import { UI } from '../../ui/elements.js';
+import { Game } from '@core/state.js';
+import { Building } from '@entities/Building.js';
+import { RectBuilding } from '@entities/rect_building/RectBuilding.js';
+import { General } from '@entities/General.js';
+import { TILE_SIZE } from '@config';
+import { UI } from '@ui/elements.js';
 
 export class MapScene extends BaseScene {
     constructor() {

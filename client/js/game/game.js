@@ -6,7 +6,7 @@ import { GameToolbar } from '../ui/game_toolbar.js';
 import { sceneManager } from './managers/SceneManager.js';
 import { CityScene } from './scenes/CityScene.js';
 import { MapScene } from './scenes/MapScene.js';
-import { UI } from '../ui/elements.js';
+import { UI } from '@ui/elements.js';
 
 export async function startGame() {
     try {

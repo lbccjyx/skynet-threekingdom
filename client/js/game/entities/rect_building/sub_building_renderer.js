@@ -1,7 +1,8 @@
-import { RenderEngine } from '../render/render_engine.js';
-import { log } from '../core/utils.js';
-import { TILE_SIZE } from '../core/config.js';
+import { RenderEngine } from '@render/render_engine.js';
+import { log } from '@utils';
+import { TILE_SIZE } from '@config';
 
+// 渲染子建筑 render_engine 的补充
 export const SubBuildingRenderer = {
     /**
      * Render a single sub-building as a discrete entity

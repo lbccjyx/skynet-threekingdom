@@ -1,6 +1,6 @@
-import { Game } from '../core/state.js';
+import { Game } from '@core/state.js';
 import { updateUI, updateResourcesUI } from '../game/game.js';
-import { log } from '../core/utils.js';
+import { log } from '@core/utils.js';
 
 // proto回调更新游戏状态
 export function updateGameState(data) {

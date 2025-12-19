@@ -1,11 +1,11 @@
-import { Game } from '../core/state.js';
-import { RenderEngine } from '../render/render_engine.js';
-import { log } from '../core/utils.js';
-import { sendRequest } from '../core/api.js';
-import { TILE_SIZE, CITY_BOUNDARY } from '../core/config.js';
-import { updateGameView } from './game.js';
-import { GhostManager } from './managers/GhostManager.js';
+import { Game } from '@core/state.js';
+import { RenderEngine } from '@render/render_engine.js';
+import { log } from '@utils';
+import { sendRequest } from '@api';
+import { TILE_SIZE, CITY_BOUNDARY } from '@config';
+import { updateGameView } from '@game/game.js';
 
+// 此类主要用于圈地操作，包括圈地、取消圈地、更新圈地、清除圈地等操作
 export const BuildRect = {
     active: false,
     startPos: null, // {x, y}
@@ -62,6 +62,7 @@ export const BuildRect = {
         this.updateRect(cx, cy);
     },
 
+    // 判断圈地位置是否有效
     IsRectPosUseful: function(tlX, tlY, width, length) {
         if (Game.currentView === 'city') {
             if (tlX < CITY_BOUNDARY.minX || 

@@ -1,5 +1,5 @@
 import { Entity } from './Entity.js';
-import { RenderEngine } from '../../render/render_engine.js';
+import { RenderEngine } from '@render/render_engine.js';
 
 export class General extends Entity {
     constructor(data) {

@@ -1,10 +1,10 @@
 import { BaseScene } from './BaseScene.js';
-import { Game } from '../../core/state.js';
+import { Game } from '@core/state.js';
 import { Building } from '../entities/Building.js';
-import { RectBuilding } from '../entities/RectBuilding.js';
-import { TILE_SIZE } from '../../core/config.js';
-import { RenderEngine } from '../../render/render_engine.js';
-import { UI } from '../../ui/elements.js';
+import { RectBuilding } from '../entities/rect_building/RectBuilding.js';
+import { TILE_SIZE } from '@config';
+import { RenderEngine } from '@render/render_engine.js';
+import { UI } from '@ui/elements.js';
 
 export class CityScene extends BaseScene {
     constructor() {

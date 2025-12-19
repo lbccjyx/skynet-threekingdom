@@ -1,5 +1,5 @@
-import { RenderEngine } from '../../render/render_engine.js';
-import { TILE_SIZE } from '../../core/config.js';
+import { RenderEngine } from '@render/render_engine.js';
+import { TILE_SIZE } from '@config';
 
 export const GhostManager = {
     ghostId: 'ghost_building',

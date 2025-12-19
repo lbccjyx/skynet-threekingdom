@@ -1,4 +1,4 @@
-import { RenderEngine } from '../../render/render_engine.js';
+import { RenderEngine } from '@render/render_engine.js';
 
 export class BaseScene {
     constructor(name) {

@@ -1,13 +1,13 @@
-import { Game } from '../core/state.js';
-import { RenderEngine } from '../render/render_engine.js';
-import { sendRequest } from '../core/api.js';
-import { log } from '../core/utils.js';
-import { updateGameView } from '../game/game.js';
-import { TILE_SIZE } from '../core/config.js';
-import { BuildRect } from '../game/build_rect.js';
-import { getNumberAfterUnderscore } from '../game/entities/Entity.js';
+import { Game } from '@core/state.js';
+import { RenderEngine } from '@render/render_engine.js';
+import { sendRequest } from '@core/api.js';
+import { log } from '@utils';
+import { updateGameView } from '@game/game.js';
+import { TILE_SIZE } from '@config';
+import { BuildRect } from './build_rect.js';
+import { getNumberAfterUnderscore } from '@entities/Entity.js';
 
-
+// 此类主要用于发起圈地操作
 export const BuildRectInput = {
     // Handle context menu for Rect Building
     handleContextMenu: function(e, target, menu, closeMenu) {
