@@ -1,7 +1,8 @@
 import { Entity } from './Entity.js';
-import { RenderEngine } from '@render/render_engine.js';
 import { TILE_SIZE } from '@config';
 import { Game } from '@core/state.js';
+import { CRenderTexture } from '@render/render_texture.js';
+import { CRenderInput } from '@render/render_input.js';
 
 export class Building extends Entity {
     constructor(data) {
@@ -20,7 +21,7 @@ export class Building extends Entity {
         const height = this.def.height * TILE_SIZE;
         const image = this.def.image;
 
-        this.mesh = RenderEngine.createEntity(
+        this.mesh = CRenderTexture.CreateEntity(
             this.getRenderId(), 
             image, 
             width, 
@@ -52,7 +53,7 @@ export class Building extends Entity {
             if (pct > 100) pct = 100;
             if (pct < 0) pct = 0;
             
-            RenderEngine.updateProgress(this.getRenderId(), pct);
+            CRenderInput.UpdateProgress(this.getRenderId(), pct);
         }
     }
 }

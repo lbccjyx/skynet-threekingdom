@@ -1,5 +1,5 @@
 import { Entity } from './Entity.js';
-import { RenderEngine } from '@render/render_engine.js';
+import { CRenderTexture } from '@render/render_texture.js';
 
 export class General extends Entity {
     constructor(data) {
@@ -9,7 +9,7 @@ export class General extends Entity {
 
     createMesh() {
         const size = 40;
-        this.mesh = RenderEngine.createEntity(
+        this.mesh = CRenderTexture.CreateEntity(
             this.getRenderId(), 
             'assets/guanfu.png', // Placeholder
             size, 

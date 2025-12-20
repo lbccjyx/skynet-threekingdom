@@ -1,11 +1,14 @@
 import { Game } from '@core/state.js';
-import { RenderEngine } from '@render/render_engine.js';
+import { CRenderEngine } from '@render/render_engine.js';
 import { log } from '@utils';
 import { sendRequest } from '@api';
 import { TILE_SIZE, CITY_BOUNDARY } from '@config';
 import { updateGameView } from '@game/game.js';
+import { getNumberAfterUnderscore } from '@entities/Entity.js';
+import { CRenderGrid } from '@render/render_grid.js';
+import { CRenderInput } from '@render/render_input.js';
 
-// 此类主要用于圈地操作，包括圈地、取消圈地、更新圈地、清除圈地等操作
+// 圈地从无到有的放置过程  圈地的拖拽移动
 export const BuildRect = {
     active: false,
     startPos: null, // {x, y}
@@ -17,7 +20,7 @@ export const BuildRect = {
         this.active = true;
         this.currentDef = def;
         this.type = def ? def.key : 0;
-        RenderEngine.setGridVisibility(true);
+        CRenderGrid.SetVisibility(true);
         const name = def ? def.name : 'Unknown';
         log(`进入圈地模式: ${name} (左键拖拽选择区域，右键取消)`);
     },
@@ -27,7 +30,7 @@ export const BuildRect = {
         this.startPos = null;
         this.currentDef = null;
         this.clearGhost();
-        RenderEngine.setGridVisibility(false);
+        CRenderGrid.SetVisibility(false);
         log("退出圈地模式");
     },
 
@@ -35,7 +38,7 @@ export const BuildRect = {
         if (!this.active) return;
         if (e.button !== 0) return; // Only Left Click
 
-        const worldPos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
+        const worldPos = CRenderInput.GetWorldPosition(e.clientX, e.clientY);
         
         // Use floor to get the top-left of the tile
         const sx = Math.floor(worldPos.x / TILE_SIZE) * TILE_SIZE;
@@ -48,7 +51,7 @@ export const BuildRect = {
     onMouseMove: function(e) {
         if (!this.active) return;
         
-        const worldPos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
+        const worldPos = CRenderInput.GetWorldPosition(e.clientX, e.clientY);
         
         const cx = Math.floor(worldPos.x / TILE_SIZE) * TILE_SIZE;
         const cy = Math.floor(worldPos.y / TILE_SIZE) * TILE_SIZE;
@@ -78,7 +81,7 @@ export const BuildRect = {
     onMouseUp: function(e) {
         if (!this.active || !this.startPos) return;
 
-        const worldPos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
+        const worldPos = CRenderInput.GetWorldPosition(e.clientX, e.clientY);
         const ex = Math.floor(worldPos.x / TILE_SIZE) * TILE_SIZE;
         const ey = Math.floor(worldPos.y / TILE_SIZE) * TILE_SIZE;
 
@@ -119,7 +122,7 @@ export const BuildRect = {
                 
                 // Clear temporary rect
                 if (this.currentRect) {
-                   RenderEngine.worldGroup.remove(this.currentRect);
+                   CRenderEngine.worldGroup.remove(this.currentRect);
                    // Dispose logic is good but let's just null it or reuse?
                    // removeGhost does dispose, here we should too or reuse.
                    // Simpler to remove.
@@ -172,7 +175,7 @@ export const BuildRect = {
              this.currentRect = new THREE.Mesh(geometry, material);
              this.currentRect.rotation.x = -Math.PI / 2; 
              this.currentRect.position.y = 1; 
-             RenderEngine.worldGroup.add(this.currentRect);
+             CRenderEngine.worldGroup.add(this.currentRect);
         }
 
         this.currentRect.scale.set(width, height, 1);
@@ -181,11 +184,118 @@ export const BuildRect = {
 
     clearGhost: function() {
         if (this.currentRect) {
-            RenderEngine.worldGroup.remove(this.currentRect);
+            CRenderEngine.worldGroup.remove(this.currentRect);
             if (this.currentRect.geometry) this.currentRect.geometry.dispose();
             if (this.currentRect.material) this.currentRect.material.dispose();
             this.currentRect = null;
         }
+    },
+    
+    // Handle Drag Start
+    handleDragStart: function(id, obj, worldPos) {
+        Game.dragState.isDragging = true;
+        Game.dragState.id = id;
+        Game.dragState.type = 'rect_building';
+        Game.dragState.data = obj.userData.data; // {x, y, width, height...}
+
+        // For rect, position is center (cx, cy).
+        // We want to snap x, y (top-left) to grid.
+        // let's calculate offset from center
+        const cx = obj.position.x;
+        // In 3D space, Z is the depth, so use Z for 2D Y calculation
+        const cy = obj.position.z;
+
+        Game.dragState.offsetX = worldPos.x - cx;
+        // Correct offset calculation using Z as Y in isometric/top-down view logic
+        Game.dragState.offsetY = worldPos.y - cy;
+        
+        // Show Ghost
+        const w = obj.userData.width;
+        const h = obj.userData.height;
+        const tlX = cx - w / 2;
+        const tlY = cy - h / 2;
+        
+        this.updateGhost(tlX, tlY, w, h);
+        
+        CRenderGrid.SetVisibility(true);
+    },
+
+    // Handle Drag Move
+    handleDragMove: function(id, newX, newY) {
+         const obj = CRenderEngine.objects[id];
+         if (obj) {
+             const w = obj.userData.width;
+             const h = obj.userData.height;
+             
+             // Calculate proposed TopLeft
+             let tlX = newX - w / 2;
+             let tlY = newY - h / 2;
+
+             // Snap
+             tlX = Math.round(tlX / TILE_SIZE) * TILE_SIZE;
+             tlY = Math.round(tlY / TILE_SIZE) * TILE_SIZE;
+
+             // Update Ghost
+             this.updateGhost(tlX, tlY, w, h);
+             
+             // Store for DragEnd
+             Game.dragState.lastRectX = tlX;
+             Game.dragState.lastRectY = tlY;
+         }
+    },
+
+    // Handle Drag End
+    handleDragEnd: function(id, obj) {
+         const w = obj.userData.width;
+         const h = obj.userData.height;
+         
+         let tlX, tlY;
+
+         if (Game.dragState.lastRectX !== undefined) {
+             tlX = Game.dragState.lastRectX;
+             tlY = Game.dragState.lastRectY;
+             delete Game.dragState.lastRectX;
+             delete Game.dragState.lastRectY;
+         } else {
+             const cx = obj.position.x;
+             const cy = obj.position.z;
+             tlX = cx - w / 2;
+             tlY = cy - h / 2;
+             tlX = Math.round(tlX / TILE_SIZE) * TILE_SIZE;
+             tlY = Math.round(tlY / TILE_SIZE) * TILE_SIZE;
+         }
+
+         this.clearGhost();
+
+        // Check Boundary
+         if (!this.IsRectPosUseful(tlX, tlY, w, h)) {
+            Game.dragState.isDragging = false;
+            Game.dragState.id = null;
+            Game.dragState.type = null;
+            Game.dragState.def = null;
+            CRenderGrid.SetVisibility(false);
+            return;
+         }
+
+         const finalId = getNumberAfterUnderscore(id);
+         sendRequest('build_rect_move', {
+            id: finalId,
+            x: tlX,
+            y: tlY
+        }, (res) => {
+            if (res.ok) {
+                const r = Game.data.rect_buildings.find(r => r.id === finalId);
+                if (r) { r.x = res.rect_building.x; r.y = res.rect_building.y; }
+                updateGameView();
+            } else {
+                updateGameView();
+            }
+        });
+
+        Game.dragState.isDragging = false;
+        Game.dragState.id = null;
+        Game.dragState.type = null;
+        CRenderGrid.SetVisibility(false);
     }
 };
 

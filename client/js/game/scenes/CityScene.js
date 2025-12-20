@@ -3,8 +3,8 @@ import { Game } from '@core/state.js';
 import { Building } from '../entities/Building.js';
 import { RectBuilding } from '../entities/rect_building/RectBuilding.js';
 import { TILE_SIZE } from '@config';
-import { RenderEngine } from '@render/render_engine.js';
 import { UI } from '@ui/elements.js';
+import { CRenderTexture } from '@render/render_texture.js';
 
 export class CityScene extends BaseScene {
     constructor() {
@@ -19,7 +19,7 @@ export class CityScene extends BaseScene {
 
     setup() {
         // Render Background
-        const bgMesh = RenderEngine.createEntity('city_bg', 'assets/background.png', TILE_SIZE*40, TILE_SIZE*50, 0, 0);
+        const bgMesh = CRenderTexture.CreateEntity('city_bg', 'assets/background.png', TILE_SIZE*40, TILE_SIZE*50, 0, 0);
         bgMesh.position.set(0, -50, 0); 
         bgMesh.quaternion.set(0, 0, 0, 1); 
         bgMesh.rotation.set(-Math.PI / 2, 0, Math.PI / 4);

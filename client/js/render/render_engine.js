@@ -1,26 +1,21 @@
-import { TILE_SIZE, CAMERA_CONFIG, LIGHT_CONFIG, GRID_CONFIG, CITY_BOUNDARY,RECT_FARM, RECT_LOAD, RECT_WALL, RECT_HOUSE  } from '../core/config.js';
+import { CAMERA_CONFIG, LIGHT_CONFIG, GRID_CONFIG } from '../core/config.js';
 import { log } from '../core/utils.js';
 
-export const RenderEngine = {
-    scene: null,
-    camera: null,
-    renderer: null,
-    container: null,
-    textures: {},
-    objects: {}, // Map of ID -> Three.js Object
-    worldGroup: null, // Group for all game entities
-    gridHelper: null, // Reference to grid
-    modelCache: {}, // Cache of loaded models keyed by path
-    loadingModelPromise: {}, // Promises for loading models keyed by path
-    
-    // Pan State
-    panState: {
-        isPanning: false,
-        lastX: 0,
-        lastY: 0
-    },
+class RenderEngine {
+    constructor() {
+        this.scene = null;
+        this.camera = null;
+        this.renderer = null;
+        this.container = null;
+        this.textures = {};
+        this.objects = {}; // Map of ID -> Three.js Object
+        this.worldGroup = null; // Group for all game entities
+        this.modelCache = {}; // Cache of loaded models keyed by path
+        this.loadingModelPromise = {}; // Promises for loading models keyed by path
+        
+    }
 
-    init: function() {
+    init() {
         this.container = document.getElementById('three-container');
         
         // Initial size might be 0 if hidden, handled by ResizeObserver
@@ -61,12 +56,6 @@ export const RenderEngine = {
         dirLight.castShadow = true;
         this.scene.add(dirLight);
 
-        // Grid Helper
-        if (GRID_CONFIG.visible) {
-            this.gridHelper = this.createCustomGrid();
-            this.scene.add(this.gridHelper);
-        }
-
         // Resize Listener (Window)
         window.addEventListener('resize', () => this.onWindowResize(), false);
 
@@ -80,9 +69,9 @@ export const RenderEngine = {
 
         // Start Loop
         this.animate();
-    },
+    }
 
-    onWindowResize: function() {
+    onWindowResize() {
         if (!this.container) return;
         const width = this.container.clientWidth;
         const height = this.container.clientHeight;
@@ -96,32 +85,16 @@ export const RenderEngine = {
         this.camera.updateProjectionMatrix();
 
         this.renderer.setSize(width, height);
-    },
+    }
 
     // 3D世界渲染循环
-    animate: function() {
+    animate() {
         requestAnimationFrame(() => this.animate());
-        
-        // Infinite Grid Logic - Disabled for fixed boundary grid
-        /*
-        if (this.gridHelper && this.camera && this.renderer) {
-             // ... Logic removed to keep grid fixed to world coordinates for boundary visualization ...
-        }
-        */
-
         this.renderer.render(this.scene, this.camera);
-    },
-
-    loadTexture: function(url) {
-        if (this.textures[url]) return this.textures[url];
-        const loader = new THREE.TextureLoader();
-        const texture = loader.load(url);
-        this.textures[url] = texture;
-        return texture;
-    },
+    }
 
     // 清空3D世界
-    clearWorld: function() {
+    ClearWorld() {
         this.objects = {};
         while(this.worldGroup.children.length > 0){ 
             const obj = this.worldGroup.children[0];
@@ -129,480 +102,9 @@ export const RenderEngine = {
             if(obj.geometry) obj.geometry.dispose();
             if(obj.material) obj.material.dispose();
         }
-    },
-    
-    // 图片渲染为3D对象
-    createEntity: function(id, image, width, height, x, y, color = null) {
-        if (this.objects[id]) {
-            this.updateEntityPosition(id, x, y);
-            return this.objects[id];
-        }
-
-        let material;
-        if (image) {
-            const texture = this.loadTexture(image);
-            material = new THREE.MeshLambertMaterial({ 
-                map: texture, 
-                transparent: true,
-                side: THREE.DoubleSide,
-                alphaTest: 0.1 
-            });
-        } else {
-            material = new THREE.MeshLambertMaterial({ 
-                color: color || 0x88cc88, 
-                transparent: true,
-                opacity: 0.6,
-                side: THREE.DoubleSide
-            });
-        }
-        
-        const geometry = new THREE.PlaneGeometry(width, height);
-        const mesh = new THREE.Mesh(geometry, material);
-        
-        mesh.position.set(x, 1, y); // Lift slightly above 0 to avoid z-fighting with ground if any
-        mesh.quaternion.copy(this.camera.quaternion);
-        mesh.userData = { id: id };
-        // Only add extra data if explicitly provided or handled externally
-        // We will rely on RectBuilding.js to add the necessary userData for dragging
-        
-        this.worldGroup.add(mesh);
-        this.objects[id] = mesh;
-        return mesh;
-    },
-
-    // 创建平铺在地面上的实体 (用于圈地)
-    createFlatEntity: function(id, width, height, x, y, type, glb_file, customProcess = null) {
-        if (this.objects[id]) {
-            const obj = this.objects[id];
-            
-            // Check if model changed
-            if (obj.userData.type !== type) {
-                this.worldGroup.remove(obj);
-                delete this.objects[id];
-                // Continue to create new
-            } else {
-                obj.position.x = x;
-                obj.position.z = y;
-                // ...
-                return obj;
-            }
-        }
-
-        const group = new THREE.Group();
-        // 这里是相当于3D 的x轴 Y轴 z轴的初始位置
-        if(type === RECT_FARM ) {
-            group.position.set(x, -13, y);
-        } else if(type === RECT_WALL)
-        {
-            group.position.set(x, -90, y);
-        }else if(type === RECT_HOUSE) {
-            group.position.set(x, -10, y);
-        } else{
-            group.position.set(x, 0, y);
-        }
-        group.userData = { id: id, width: width, height: height, glb_file: glb_file, type: type };
-
-        // Calculate grid dimensions
-        const cols = Math.round(width / TILE_SIZE);
-        const rows = Math.round(height / TILE_SIZE);
-        
-        // Helper to populate group
-        const populate = (modelInput) => {
-            // Remove existing children (placeholders or old models)
-            while(group.children.length > 0){ 
-                group.remove(group.children[0]); 
-            }
-
-            const startX = -width / 2;
-            const startZ = -height / 2;
-
-            // Handle model input: could be single object or array
-            let mainModel = modelInput;
-            if (Array.isArray(modelInput)) {
-                mainModel = modelInput[0]; // Use first as "main" for scale calculations if needed
-            }
-
-            // Compute scale once based on main model
-            let scaleX = 1, scaleY = 1, scaleZ = 1;
-            let liftY = 0;
-            let rotationY = 0;
-
-            if(type === RECT_WALL && cols > rows && !customProcess) {
-                rotationY = Math.PI / 2;
-            }
-
-            if (mainModel) {
-                 const box = new THREE.Box3().setFromObject(mainModel);
-                 const size = box.getSize(new THREE.Vector3());
-
-                 if (size.x > 0 && size.z > 0) {
-                     scaleX = TILE_SIZE / size.x;
-                     scaleZ = TILE_SIZE / size.z;
-                     scaleY = TILE_SIZE / size.x; 
-                 }
-
-                 // 民房的特殊处理
-                 if(type === RECT_HOUSE) {
-                    scaleX = scaleX/1.5;
-                    scaleZ = scaleZ/1.2;
-                    scaleY = scaleY/2;
-                    rotationY = Math.PI * 6 / 4;
-                 }
-
-                 liftY = (size.y * scaleY) / 2;
-            }
-
-            for (let c = 0; c < cols; c++) {
-                for (let r = 0; r < rows; r++) {
-                    const tx = startX + c * TILE_SIZE + TILE_SIZE / 2;
-                    const tz = startZ + r * TILE_SIZE + TILE_SIZE / 2;
-                    
-                    // World Position of this tile (center of tile)
-                    const worldTileX = x + tx;
-                    const worldTileY = y + tz;
-
-                    if (customProcess) {
-                        // Custom process receives full input (array or single)
-                        const results = customProcess(modelInput, worldTileX, worldTileY, {
-                            scale: {x: scaleX, y: scaleY, z: scaleZ},
-                            liftY: liftY,
-                            tileSize: TILE_SIZE
-                        });
-                        
-                        if (results && Array.isArray(results)) {
-                            results.forEach(res => {
-                                res.position.x += tx;
-                                res.position.z += tz;
-                                group.add(res);
-                            });
-                        }
-                        continue;
-                    }
-
-                    if (mainModel) {
-                        const clone = mainModel.clone();
-
-                        if(type === RECT_WALL) {
-                            clone.scale.set(scaleX , scaleY, scaleZ);
-                        }else{
-                            clone.scale.set(scaleX, scaleY, scaleZ);
-                        }
-                        clone.rotation.y = rotationY;
-                        clone.position.set(tx, liftY, tz);
-                        group.add(clone);
-                    } else {
-                        // Placeholder
-                        const geo = new THREE.BoxGeometry(TILE_SIZE - 2, 0, TILE_SIZE - 2);
-                        const mat = new THREE.MeshLambertMaterial({ 
-                            color: 0xffaa00, 
-                            transparent: true, 
-                            opacity: 0.6 
-                        });
-                        const mesh = new THREE.Mesh(geo, mat);
-                        mesh.position.set(tx, 0, tz);
-                        group.add(mesh);
-                    }
-                }
-            }
-        };
-
-        // Initial Placeholder
-        populate(null);
-
-        // Load Logic for Single or Multiple Files
-        const loadSingleModel = (path) => {
-            if (this.modelCache[path]) return Promise.resolve(this.modelCache[path]);
-            
-            if (!this.loadingModelPromise[path]) {
-                const loader = new THREE.GLTFLoader();
-                this.loadingModelPromise[path] = new Promise((resolve) => {
-                    loader.load(path, (gltf) => {
-                        this.modelCache[path] = gltf.scene;
-                        this.modelCache[path].traverse((child) => {
-                            if (child.isMesh && child.material) {
-
-                                if(type === RECT_HOUSE) {
-                                    child.material.color.multiplyScalar(2);
-                                }else if (type === RECT_WALL) {
-                                    child.material.color.multiplyScalar(4); 
-                                }else{
-                                    child.material.color.multiplyScalar(5); 
-                                }
-                            }
-                        });
-                        resolve(gltf.scene);
-                    }, undefined, (err) => {
-                        console.error('Error loading model', err);
-                        resolve(null);
-                    });
-                });
-            }
-            return this.loadingModelPromise[path];
-        };
-
-        if (typeof THREE.GLTFLoader !== 'undefined') {
-            if (type === RECT_WALL && Array.isArray(glb_file)) {
-                Promise.all(glb_file.map(f => loadSingleModel(f))).then(models => {
-                    if (models && this.objects[id] === group) {
-                        populate(models); // Pass array
-                    }
-                });
-            } else {
-                loadSingleModel(glb_file).then(model => {
-                    if (model && this.objects[id] === group) {
-                        populate(model);
-                    }
-                });
-            }
-        }
-
-        this.worldGroup.add(group);
-        this.objects[id] = group;
-        return group;
-    },
-
-    // 更新建筑的位置
-    updateEntityPosition: function(id, x, y) {
-        const obj = this.objects[id];
-        if (obj) {
-             // Keep y consistent with createEntity (y=1)
-             // Using height/2 would lift the object center, which might be wrong if pivot is center
-             // and we want it "on the ground".
-             // However, createEntity puts it at y=1.
-             obj.position.set(x, 1, y);
-        }
-    },
-    
-    // 设置建筑的选中状态
-    setHighlight: function(id, highlight) {
-        const obj = this.objects[id];
-        if (!obj) return;
-        
-        const applyHighlight = (mesh) => {
-            if (!mesh.material) return;
-            if (highlight) {
-                if (mesh.material.emissive) {
-                    mesh.material.emissive.setHex(0x555555);
-                } else {
-                    if (mesh.userData.originalColor === undefined) {
-                         mesh.userData.originalColor = mesh.material.color.getHex();
-                         mesh.userData.originalOpacity = mesh.material.opacity;
-                    }
-                    mesh.material.color.setHex(0xffff88);
-                    mesh.material.opacity = 0.9;
-                }
-            } else {
-                if (mesh.material.emissive) {
-                    mesh.material.emissive.setHex(0x000000);
-                } else {
-                    if (mesh.userData.originalColor !== undefined) {
-                        mesh.material.color.setHex(mesh.userData.originalColor);
-                        mesh.material.opacity = mesh.userData.originalOpacity;
-                    }
-                }
-            }
-        };
-
-        if (obj.isGroup) {
-            obj.traverse((child) => {
-                if (child.isMesh) applyHighlight(child);
-            });
-        } else {
-            applyHighlight(obj);
-        }
-    },
-    
-    // 更新建筑的进度条
-    updateProgress: function(RenderId, percent) {
-        const obj = this.objects[RenderId];
-        if (!obj) 
-        {
-            log(' updateProgress: function(id, percent) obj is null');
-            return;
-        }
-        let bar = obj.getObjectByName('progressBar');
-        // 就是要bar不存在也要创建
-        if (!bar && percent < 100) {
-            const width = 40;
-            const height = 6;
-            
-            const barBgGeo = new THREE.PlaneGeometry(width, height);
-            const barBgMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
-            const barBg = new THREE.Mesh(barBgGeo, barBgMat);
-            
-            const barFillGeo = new THREE.PlaneGeometry(width, height);
-            barFillGeo.translate(width / 2, 0, 0);
-            
-            const barFillMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-            const barFill = new THREE.Mesh(barFillGeo, barFillMat);
-            barFill.name = 'fill';
-            barFill.position.set(-width / 2, 0, 1);
-            
-            bar = new THREE.Group();
-            bar.name = 'progressBar';
-            bar.add(barBg);
-            bar.add(barFill);
-            
-            bar.position.set(0, 30, 10); 
-            
-            obj.add(bar);
-        }
-        
-        if (bar) {
-            if (percent >= 100) {
-                bar.visible = false;
-            } else {
-                bar.visible = true;
-                const fill = bar.getObjectByName('fill');
-                if (fill) {
-                    fill.scale.x = percent / 100;
-                }
-            }
-        }
-    },
-
-    // 获取鼠标在3D世界中的碰撞点
-    getIntersections: function(clientX, clientY) {
-        const rect = this.renderer.domElement.getBoundingClientRect();
-        const mouse = new THREE.Vector2();
-        mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-        mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
-
-        const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(mouse, this.camera);
-
-        return raycaster.intersectObjects(this.worldGroup.children, true);
-    },
-    
-    // 获取鼠标在3D世界中的位置
-    getWorldPosition: function(clientX, clientY) {
-        // 获取画布的边界
-        const rect = this.renderer.domElement.getBoundingClientRect();
-        // 获取鼠标在屏幕中的位置
-        const mouse = new THREE.Vector2();
-        // 将鼠标位置转换为NDC坐标
-        mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-        mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
-        
-        // 创建射线投射器
-        const raycaster = new THREE.Raycaster();
-        // 设置射线投射器从相机到鼠标位置
-        raycaster.setFromCamera(mouse, this.camera);
-        
-        // 创建平面
-        // Make the infinite plane match the ground level at y=0 (or whatever our ground is)
-        const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-        
-        // 创建目标向量
-        const target = new THREE.Vector3();
-        
-        // 计算射线与平面的交点
-        const intersection = raycaster.ray.intersectPlane(plane, target);
-        
-        // If intersection exists, return coordinates
-        if (intersection) {
-             return { x: intersection.x, y: intersection.z };
-        }
-        
-        // Fallback or "no intersection" - shouldn't happen with infinite plane unless ray is parallel
-        return { x: 0, y: 0 };
-    },
-
-    // 鼠标中键拖拽的镜头平移 Camera Panning
-    panCamera: function(deltaX, deltaY) {
-        const zoom = this.camera.zoom;
-        const panSpeed = 1.0 / zoom; 
-        
-        const worldWidth = this.camera.right - this.camera.left;
-        const screenWidth = this.container.clientWidth;
-        const ratioX = worldWidth / screenWidth;
-        
-        const worldHeight = this.camera.top - this.camera.bottom;
-        const screenHeight = this.container.clientHeight;
-        const ratioY = worldHeight / screenHeight;
-
-        const moveX = -deltaX * ratioX;
-        const moveY = deltaY * ratioY; 
-        
-        this.camera.translateX(moveX);
-        this.camera.translateY(moveY);
-    },
-
-    // 创建自定义网格 (红色表示越界)
-    createCustomGrid: function() {
-        const group = new THREE.Group();
-        
-        const size = GRID_CONFIG.size;
-        const step = TILE_SIZE;
-        const halfSize = size / 2;
-        
-        const colorInside = 0x888888; // Grey
-        const colorOutside = 0xff0000; // Red
-        
-        const matInside = new THREE.LineBasicMaterial({ color: colorInside });
-        const matOutside = new THREE.LineBasicMaterial({ color: colorOutside });
-        
-        // Helper to add line
-        const addLine = (x1, y1, z1, x2, y2, z2, isOutside) => {
-            const points = [];
-            points.push(new THREE.Vector3(x1, y1, z1));
-            points.push(new THREE.Vector3(x2, y2, z2));
-            const geometry = new THREE.BufferGeometry().setFromPoints(points);
-            const line = new THREE.Line(geometry, isOutside ? matOutside : matInside);
-            group.add(line);
-        };
-
-        const { minX, maxX, minY, maxY } = CITY_BOUNDARY;
-
-        // Vertical lines (along Z)
-        for (let x = -halfSize; x <= halfSize; x += step) {
-             // If x is outside boundary X range, whole line is red
-             if (x <= minX || x >= maxX) {
-                 addLine(x, 0, -halfSize, x, 0, halfSize, true);
-             } else {
-                 // Split into 3 segments
-                 // 1. -halfSize to minY (Red)
-                 if (-halfSize < minY) {
-                     addLine(x, 0, -halfSize, x, 0, minY, true);
-                 }
-                 // 2. minY to maxY (Grey/Inside)
-                 addLine(x, 0, minY, x, 0, maxY, false);
-                 // 3. maxY to halfSize (Red)
-                 if (maxY < halfSize) {
-                     addLine(x, 0, maxY, x, 0, halfSize, true);
-                 }
-             }
-        }
-
-        // Horizontal lines (along X)
-        for (let z = -halfSize; z <= halfSize; z += step) {
-            // If z is outside boundary Y range, whole line is red
-            if (z <= minY || z >= maxY) {
-                addLine(-halfSize, 0, z, halfSize, 0, z, true);
-            } else {
-                // Split into 3 segments
-                // 1. -halfSize to minX (Red)
-                if (-halfSize < minX) {
-                     addLine(-halfSize, 0, z, minX, 0, z, true);
-                }
-                // 2. minX to maxX (Grey)
-                addLine(minX, 0, z, maxX, 0, z, false);
-                // 3. maxX to halfSize (Red)
-                if (maxX < halfSize) {
-                    addLine(maxX, 0, z, halfSize, 0, z, true);
-                }
-            }
-        }
-        
-        return group;
-    },
-
-    // 虚线网格设置为是否可见 拖拽和建筑的时候可见。
-    setGridVisibility: function(visible) {
-        if (!this.gridHelper) {
-             this.gridHelper = this.createCustomGrid();
-             this.scene.add(this.gridHelper);
-        }
-        this.gridHelper.visible = visible;
     }
-};
+    
+}
+
+// Export singleton
+export const CRenderEngine = new RenderEngine();

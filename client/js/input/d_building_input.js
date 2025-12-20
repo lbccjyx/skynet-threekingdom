@@ -1,5 +1,4 @@
 import { Game } from '../core/state.js';
-import { RenderEngine } from '@render/render_engine.js';
 import { sendRequest } from '../core/api.js';
 import { log } from '@utils';
 import { updateGameView } from '@game/game.js';
@@ -31,7 +30,7 @@ export const BuildingInput = {
                 Game.placementState.x = buildX;
                 Game.placementState.y = buildY;
                 
-                RenderEngine.setGridVisibility(true);
+                CRenderGrid.SetVisibility(true);
                 GhostManager.createGhost(def, buildX, buildY);
 
                 menu.remove();
@@ -81,7 +80,7 @@ export const BuildingInput = {
 
         Game.placementState.active = false;
         Game.placementState.def = null;
-        RenderEngine.setGridVisibility(false);
+        CRenderGrid.SetVisibility(false);
         GhostManager.removeGhost();
     },
 
@@ -117,7 +116,7 @@ export const BuildingInput = {
         // Initialize Ghost at current position
         GhostManager.createGhost(def, objGameX, objGameY);
         
-        RenderEngine.setGridVisibility(true);
+        CRenderGrid.SetVisibility(true);
         log(`Started dragging building ${id}`);
     },
 
@@ -178,7 +177,7 @@ export const BuildingInput = {
                   Game.dragState.id = null;
                   Game.dragState.type = null;
                   Game.dragState.def = null;
-                  RenderEngine.setGridVisibility(false);
+                  CRenderGrid.SetVisibility(false);
                   return;
              }
         }
@@ -206,7 +205,7 @@ export const BuildingInput = {
         Game.dragState.id = null;
         Game.dragState.type = null;
         Game.dragState.def = null;
-        RenderEngine.setGridVisibility(false);
+        CRenderGrid.SetVisibility(false);
     }
 };
 

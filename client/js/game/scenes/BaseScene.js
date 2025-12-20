@@ -1,4 +1,4 @@
-import { RenderEngine } from '@render/render_engine.js';
+import { CRenderEngine } from '@render/render_engine.js';
 
 export class BaseScene {
     constructor(name) {
@@ -28,7 +28,6 @@ export class BaseScene {
     }
 
     render() {
-        // Override me: Render logic (usually handled by RenderEngine loop, but here we can update view-specifics)
         this.entities.forEach(e => e.render());
     }
 
@@ -49,7 +48,7 @@ export class BaseScene {
         // Clear all entities
         this.entities.forEach(e => e.unmount());
         this.entities = [];
-        RenderEngine.clearWorld();
+        CRenderEngine.ClearWorld();
     }
 }
 

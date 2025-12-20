@@ -1,5 +1,6 @@
-import { RenderEngine } from '@render/render_engine.js';
+import { CRenderEngine } from '@render/render_engine.js';
 import { TILE_SIZE } from '@config';
+import { CRenderTexture } from '@render/render_texture.js';
 
 export const GhostManager = {
     ghostId: 'ghost_building',
@@ -11,7 +12,7 @@ export const GhostManager = {
         const height = def.height * TILE_SIZE;
         const image = def.image;
         
-        const mesh = RenderEngine.createEntity(this.ghostId, image, width, height, x, y);
+        const mesh = CRenderTexture.CreateEntity(this.ghostId, image, width, height, x, y);
         
         mesh.renderOrder = 20; 
 
@@ -26,16 +27,16 @@ export const GhostManager = {
     },
 
     updateGhost: function(x, y) {
-        RenderEngine.updateEntityPosition(this.ghostId, x, y);
+        CRenderInput.UpdateEntityPosition(this.ghostId, x, y);
     },
 
     removeGhost: function() {
-        const obj = RenderEngine.objects[this.ghostId];
+        const obj = CRenderEngine.objects[this.ghostId];
         if (obj) {
-            RenderEngine.worldGroup.remove(obj);
+            CRenderEngine.worldGroup.remove(obj);
             if (obj.geometry) obj.geometry.dispose();
             if (obj.material) obj.material.dispose();
-            delete RenderEngine.objects[this.ghostId];
+            delete CRenderEngine.objects[this.ghostId];
         }
     }
 };

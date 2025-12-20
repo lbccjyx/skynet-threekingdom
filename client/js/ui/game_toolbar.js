@@ -1,10 +1,11 @@
 import { Game } from '../core/state.js';
 import { BuildRect } from '@entities/rect_building/build_rect.js';
-import { RenderEngine } from '@render/render_engine.js';
+import { CRenderInput } from '@render/render_input.js';
 import { log } from '../core/utils.js';
 import { updateGameView } from '../game/game.js';
 import { GhostManager } from '../game/managers/GhostManager.js';
 import { sendRequest } from '../core/api.js';
+import { CRenderGrid } from '@render/render_grid.js';
 
 export const GameToolbar = {
     activeSubmenu: null,
@@ -140,7 +141,7 @@ export const GameToolbar = {
         Game.placementState.x = 0; 
         Game.placementState.y = 0;
 
-        RenderEngine.setGridVisibility(true);
+        CRenderGrid.SetVisibility(true);
         GhostManager.createGhost(def, 0, 0);
     },
 
@@ -172,7 +173,7 @@ export const GameToolbar = {
             if (BuildRect.active) {
                 BuildRect.stop();
             }
-            RenderEngine.setGridVisibility(false);
+            CRenderGrid.SetVisibility(false);
 
         } else {
             log("退出删除模式");
@@ -219,7 +220,7 @@ export const GameToolbar = {
 
                     // Remove highlight before deleting, as materials might be shared across instances
                     const objId = 'rect_building_' + realId;
-                    RenderEngine.setHighlight(objId, false);
+                    CRenderInput.SetHighlight(objId, false);
                     if (Game.hoveredBuildingId === objId) {
                         Game.hoveredBuildingId = null;
                     }
@@ -230,7 +231,7 @@ export const GameToolbar = {
                         Game.data.rect_buildings_sub = Game.data.rect_buildings_sub.filter(s => s.rect_building_id !== realId);
                     }
 
-                    RenderEngine.setGridVisibility(false);
+                    CRenderGrid.SetVisibility(false);
                     updateGameView();
                     
                 } else {

@@ -1,4 +1,5 @@
-import { RenderEngine } from '@render/render_engine.js';
+import { CRenderEngine } from '@render/render_engine.js';
+import { CRenderInput } from '@render/render_input.js';
 
 export const getNumberAfterUnderscore = (str) => {
     const match = str.match(/_(\d+)[^_]*$/);
@@ -29,7 +30,7 @@ export class Entity {
     // Called when removed from scene
     unmount() {
         if (this.mesh) {
-            RenderEngine.worldGroup.remove(this.mesh);
+            CRenderEngine.worldGroup.remove(this.mesh);
             if (this.mesh.geometry) this.mesh.geometry.dispose();
             if (this.mesh.material) {
                 if (Array.isArray(this.mesh.material)) {
@@ -38,8 +39,8 @@ export class Entity {
                     this.mesh.material.dispose();
                 }
             }
-            if (RenderEngine.objects[this.getRenderId()]) {
-                delete RenderEngine.objects[this.getRenderId()];
+            if (CRenderEngine.objects[this.getRenderId()]) {
+                delete CRenderEngine.objects[this.getRenderId()];
             }
             this.mesh = null;
         }
@@ -68,7 +69,7 @@ export class Entity {
         this.data.x = x;
         this.data.y = y;
         if (this.mesh) {
-            RenderEngine.updateEntityPosition(this.getRenderId(), x, y);
+            CRenderInput.UpdateEntityPosition(this.getRenderId(), x, y);
         }
     }
 }

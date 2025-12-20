@@ -4,11 +4,12 @@ import { sendRequest } from '@core/api.js';
 import { log } from '@core/utils.js';
 import { switchView, updateGameView } from '../game/game.js';
 import { GhostManager } from '../game/managers/GhostManager.js';
-import { RenderEngine } from '@render/render_engine.js';
+import { CRenderEngine } from '@render/render_engine.js';
 import { BuildRect } from '@entities/rect_building/build_rect.js';
-import { BuildRectInput } from '@entities/rect_building/d_build_rect_input.js';
 import { BuildingInput } from './d_building_input.js';
 import { GameToolbar } from '../ui/game_toolbar.js';
+import { CRenderGrid } from '@render/render_grid.js';
+import { CRenderInput } from '@render/render_input.js';
 
 // Helper to find interactive parent
 function findInteractiveObject(object) {
@@ -36,7 +37,7 @@ export function setupContextMenus() {
         if (Game.placementState.active) {
             Game.placementState.active = false;
             Game.placementState.def = null;
-            RenderEngine.setGridVisibility(false);
+            CRenderGrid.setVisibility(false);
             GhostManager.removeGhost();
             log("取消建造");
             return;
@@ -83,12 +84,12 @@ export function initInteractionListeners() {
         // Standard wheel zoom
         e.preventDefault();
         const direction = e.deltaY > 0 ? -1 : 1;
-        let newZoom = RenderEngine.camera.zoom + (direction * 0.1);
+        let newZoom = CRenderEngine.camera.zoom + (direction * 0.1);
         if (newZoom < 0.5) newZoom = 0.5;
         if (newZoom > 3.0) newZoom = 3.0;
         
-        RenderEngine.camera.zoom = newZoom;
-        RenderEngine.camera.updateProjectionMatrix();
+        CRenderEngine.camera.zoom = newZoom;
+        CRenderEngine.camera.updateProjectionMatrix();
         
         Game.zoom = newZoom;
     });
@@ -101,19 +102,19 @@ export function initInteractionListeners() {
         }
 
         // 1. Handle Camera Panning
-        if (RenderEngine.panState.isPanning) {
+        if (CRenderInput.panState.isPanning) {
             e.preventDefault();
-            const deltaX = e.clientX - RenderEngine.panState.lastX;
-            const deltaY = e.clientY - RenderEngine.panState.lastY;
+            const deltaX = e.clientX - CRenderInput.panState.lastX;
+            const deltaY = e.clientY - CRenderInput.panState.lastY;
             
-            RenderEngine.panCamera(deltaX, deltaY);
+            CRenderInput.PanCamera(deltaX, deltaY);
             
-            RenderEngine.panState.lastX = e.clientX;
-            RenderEngine.panState.lastY = e.clientY;
+            CRenderInput.panState.lastX = e.clientX;
+            CRenderInput.panState.lastY = e.clientY;
             return;
         }
 
-        const worldPos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
+        const worldPos = CRenderInput.GetWorldPosition(e.clientX, e.clientY);
         
         if (Game.placementState.active) {
             BuildingInput.handlePlacementMouseMove(worldPos);
@@ -142,19 +143,19 @@ export function initInteractionListeners() {
             const newY = worldPos.y - Game.dragState.offsetY;
 
             if (Game.dragState.type === 'rect_building') {
-                 BuildRectInput.handleDragMove(id, newX, newY);
+                BuildRect.handleDragMove(id, newX, newY);
                  return;
             } else if (Game.dragState.type === 'building') {
                  BuildingInput.handleDragMove(id, newX, newY);
                  return;
             }
 
-            RenderEngine.updateEntityPosition(id, newX, newY);
+            CRenderInput.UpdateEntityPosition(id, newX, newY);
             return;
         }
 
         // 3. 处理悬停 (高亮)
-        const intersects = RenderEngine.getIntersections(e.clientX, e.clientY);
+        const intersects = CRenderInput.GetIntersections(e.clientX, e.clientY);
         if (intersects.length > 0) {
             let targetObject = null;
             for (const hit of intersects) {
@@ -170,10 +171,10 @@ export function initInteractionListeners() {
                 if (Game.hoveredBuildingId !== id) {
                     if (Game.hoveredBuildingId) {
                         // 取消高亮
-                         RenderEngine.setHighlight(Game.hoveredBuildingId, false);
+                        CRenderInput.SetHighlight(Game.hoveredBuildingId, false);
                     }
                     // 设置高亮
-                    RenderEngine.setHighlight(id, true);
+                    CRenderInput.SetHighlight(id, true);
                     // 设置鼠标样式为指针
                     container.style.cursor = 'pointer';
                     // 设置悬停的建筑ID
@@ -181,14 +182,14 @@ export function initInteractionListeners() {
                 }
             } else {
                  if (Game.hoveredBuildingId !== null) {
-                    RenderEngine.setHighlight(Game.hoveredBuildingId, false);
+                    CRenderInput.SetHighlight(Game.hoveredBuildingId, false);
                     container.style.cursor = 'default';
                     Game.hoveredBuildingId = null;
                 }
             }
         } else {
              if (Game.hoveredBuildingId !== null) {
-                RenderEngine.setHighlight(Game.hoveredBuildingId, false);
+                CRenderInput.SetHighlight(Game.hoveredBuildingId, false);
                 container.style.cursor = 'default';
                 Game.hoveredBuildingId = null;
             }
@@ -201,10 +202,10 @@ export function initInteractionListeners() {
         if (e.button === 1) {
             e.preventDefault();
             // 开始平移
-            RenderEngine.panState.isPanning = true;
+            CRenderInput.panState.isPanning = true;
             // 记录上次鼠标位置
-            RenderEngine.panState.lastX = e.clientX;
-            RenderEngine.panState.lastY = e.clientY;
+            CRenderInput.panState.lastX = e.clientX;
+            CRenderInput.panState.lastY = e.clientY;
             // 设置鼠标样式为移动
             container.style.cursor = 'move';
             return;
@@ -215,7 +216,7 @@ export function initInteractionListeners() {
 
         // DELETE MODE CHECK
         if (GameToolbar.deleteMode) {
-             const intersects = RenderEngine.getIntersections(e.clientX, e.clientY);
+             const intersects = CRenderInput.GetIntersections(e.clientX, e.clientY);
              for (const hit of intersects) {
                 const found = findInteractiveObject(hit.object);
                 if (found) {
@@ -239,7 +240,7 @@ export function initInteractionListeners() {
         }
 
         // 获取鼠标在3D世界中的碰撞点
-        const intersects = RenderEngine.getIntersections(e.clientX, e.clientY);
+        const intersects = CRenderInput.GetIntersections(e.clientX, e.clientY);
         // 获取碰撞点对应的物体
         let targetObject = null;
         for (const hit of intersects) {
@@ -254,7 +255,7 @@ export function initInteractionListeners() {
             // 获取碰撞点对应的物体
             const obj = targetObject;
             const id = obj.userData.id;
-            const worldPos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
+            const worldPos = CRenderInput.GetWorldPosition(e.clientX, e.clientY);
             
             const isGeneral = obj.userData.type === 'general';
             const isRect = obj.userData.type === 'rect_building';
@@ -271,11 +272,11 @@ export function initInteractionListeners() {
                  Game.dragState.offsetX = worldPos.x - objGameX;
                  Game.dragState.offsetY = worldPos.y - objGameY;
                  
-                 RenderEngine.setGridVisibility(true);
+                 CRenderGrid.setVisibility(true);
                  log(`Started dragging general ${id}`);
                  
             } else if (isRect) {
-                 BuildRectInput.handleDragStart(id, obj, worldPos);
+                BuildRect.handleDragStart(id, obj, worldPos);
             } else {
                  BuildingInput.handleDragStart(id, obj, worldPos);
             }
@@ -285,8 +286,8 @@ export function initInteractionListeners() {
     // 鼠标抬起 (结束拖拽 / 平移)
     const endInteraction = (e) => {
         // 结束平移
-        if (RenderEngine.panState.isPanning) {
-            RenderEngine.panState.isPanning = false;
+        if (CRenderInput.panState.isPanning) {
+            CRenderInput.panState.isPanning = false;
             container.style.cursor = 'default';
         }
 
@@ -298,12 +299,12 @@ export function initInteractionListeners() {
         if (Game.dragState.isDragging) {
             const id = Game.dragState.id;
             const type = Game.dragState.type;
-            const obj = RenderEngine.objects[id];
+            const obj = CRenderEngine.objects[id];
             
             if (obj) {
                 // Handle Rect Dragging Special Logic (Center vs TopLeft)
                 if (type === 'rect_building') {
-                     BuildRectInput.handleDragEnd(id, obj);
+                    BuildRect.handleDragEnd(id, obj);
                      return;
                 }
 
@@ -325,7 +326,7 @@ export function initInteractionListeners() {
                           Game.dragState.isDragging = false;
                           Game.dragState.id = null;
                           Game.dragState.type = null;
-                          RenderEngine.setGridVisibility(false);
+                          CRenderGrid.setVisibility(false);
                           return;
                      }
                 }
@@ -347,7 +348,7 @@ export function initInteractionListeners() {
                      Game.dragState.isDragging = false;
                      Game.dragState.id = null;
                      Game.dragState.type = null;
-                     RenderEngine.setGridVisibility(false);
+                     CRenderGrid.setVisibility(false);
                 } else {
                     BuildingInput.handleDragEnd(id, obj);
                 }
@@ -356,7 +357,7 @@ export function initInteractionListeners() {
                 Game.dragState.isDragging = false;
                 Game.dragState.id = null;
                 Game.dragState.type = null;
-                RenderEngine.setGridVisibility(false);
+                CRenderGrid.setVisibility(false);
             }
         }
     };
@@ -372,7 +373,7 @@ export function initInteractionListeners() {
 
     // 鼠标双击空地，打印坐标
     container.addEventListener('dblclick', (e) => {
-        const intersects = RenderEngine.getIntersections(e.clientX, e.clientY);
+        const intersects = CRenderInput.GetIntersections(e.clientX, e.clientY);
         let targetObject = null;
         for (const hit of intersects) {
             const found = findInteractiveObject(hit.object);
@@ -383,7 +384,7 @@ export function initInteractionListeners() {
         }
         
         if (!targetObject) {
-            const worldPos = RenderEngine.getWorldPosition(e.clientX, e.clientY);
+            const worldPos = CRenderInput.GetWorldPosition(e.clientX, e.clientY);
             const x = Math.floor(worldPos.x);
             const y = Math.floor(worldPos.y);
             log(`Double click at: ${x}, ${y}`);

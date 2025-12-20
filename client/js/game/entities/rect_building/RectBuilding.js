@@ -1,9 +1,11 @@
 import { Entity } from '../Entity.js';
-import { RenderEngine } from '@render/render_engine.js';
+import { CRenderEngine } from '@render/render_engine.js';
 import { TILE_SIZE } from '@config';
 import { Game } from '@core/state.js';
 import { log } from '@utils';
-import { SubBuildingRenderer } from './sub_building_renderer.js';
+import { CSubBuildingRenderer } from '@render/render_sub_building.js';
+import { CRenderRectBuilding } from '@render/render_rect_building.js';
+import { CRenderTexture } from '@render/render_texture.js';
 
 // 此类主要用于渲染圈地，包括渲染圈地、渲染子建筑、渲染城墙等操作
 export class RectBuilding extends Entity {
@@ -26,7 +28,7 @@ export class RectBuilding extends Entity {
             this.renderSubBuildings(subs);
             
             // Render a transparent base for selection/hit detection
-            this.mesh = RenderEngine.createEntity(
+            this.mesh = CRenderTexture.CreateEntity(
                 this.getRenderId(),
                 null, // No image
                 this.width,
@@ -36,7 +38,6 @@ export class RectBuilding extends Entity {
             );
             
             // Store dimensions in userData for drag logic
-            // This is CRITICAL for d_build_rect_input.js to work properly
             if (this.mesh) {
                 this.mesh.userData.width = this.width;
                 this.mesh.userData.height = this.height;
@@ -46,9 +47,6 @@ export class RectBuilding extends Entity {
                 this.mesh.userData.data = this.data; 
             }
 
-            // Adjust rotation to match isometric view (horizontal on ground)
-            // RenderEngine.createEntity sets rotation to match camera by default for "billboard" effect or upright sprites
-            // But we want this to be flat on the ground like a rug
             if (this.mesh) {
                 this.mesh.rotation.x = -Math.PI / 2;
                 this.mesh.rotation.y = 0;
@@ -93,7 +91,7 @@ export class RectBuilding extends Entity {
                 glbPath = `${buildDef.imageDir}/${sub.building_index}.glb`;
             }
             log("glbPath: " + glbPath);
-            SubBuildingRenderer.render(
+            CSubBuildingRenderer.Render(
                 subId,
                 sub.x,
                 sub.y,
@@ -130,7 +128,7 @@ export class RectBuilding extends Entity {
             };
         }
 
-        this.mesh = RenderEngine.createFlatEntity(
+        this.mesh = CRenderRectBuilding.CreateFlatEntity(
             this.getRenderId(), 
             this.width, 
             this.height, 
@@ -221,18 +219,15 @@ export class RectBuilding extends Entity {
         // Cleanup sub-buildings
         if (this.subRenderIds) {
             this.subRenderIds.forEach(id => {
-                const obj = RenderEngine.objects[id];
+                const obj = CRenderEngine.objects[id];
                 if (obj) {
-                    RenderEngine.worldGroup.remove(obj);
-                    // Dispose geometry/materials if needed
-                    // RenderEngine.objects[id] might be a Group or Mesh
-                    // Ideally call a RenderEngine helper to remove entity by ID
+                    CRenderEngine.worldGroup.remove(obj);
                     if (obj.geometry) obj.geometry.dispose();
                     if (obj.material) {
                          if (Array.isArray(obj.material)) obj.material.forEach(m=>m.dispose());
                          else obj.material.dispose();
                     }
-                    delete RenderEngine.objects[id];
+                    delete CRenderEngine.objects[id];
                 }
             });
             this.subRenderIds = [];

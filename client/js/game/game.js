@@ -1,7 +1,7 @@
 import { Game } from '../core/state.js';
 import { connectWS } from '../core/network.js';
 import { setupContextMenus, initListeners, initInteractionListeners } from '../input/input.js';
-import { RenderEngine } from '../render/render_engine.js';
+import { CRenderEngine } from '@render/render_engine.js';
 import { GameToolbar } from '../ui/game_toolbar.js';
 import { sceneManager } from './managers/SceneManager.js';
 import { CityScene } from './scenes/CityScene.js';
@@ -32,7 +32,7 @@ export async function startGame() {
         GameToolbar.init();
 
         // Initialize 3D Engine
-        RenderEngine.init();
+        CRenderEngine.init();
 
         // Initialize Scenes
         sceneManager.registerScene('city', new CityScene());

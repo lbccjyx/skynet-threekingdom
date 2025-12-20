@@ -1,9 +1,11 @@
-import { RenderEngine } from '@render/render_engine.js';
+import { CRenderEngine } from '@render/render_engine.js';
 import { log } from '@utils';
 import { TILE_SIZE } from '@config';
 
 // 渲染子建筑 render_engine 的补充
-export const SubBuildingRenderer = {
+class SubBuildingRenderer
+{
+    constructor(){}
     /**
      * Render a single sub-building as a discrete entity
      * @param {string} id - Unique ID for the render object
@@ -11,10 +13,10 @@ export const SubBuildingRenderer = {
      * @param {number} y - World Y position
      * @param {string} glbPath - Path to GLB model
      */
-    render: function(id, x, y, glbPath, width, height) {
+    Render(id, x, y, glbPath, width, height) {
         // If object exists, update position
-        if (RenderEngine.objects[id]) {
-            const obj = RenderEngine.objects[id];
+        if (CRenderEngine.objects[id]) {
+            const obj = CRenderEngine.objects[id];
             // Update position (assuming y=0 for ground)
             obj.position.set(x, 0, y);
             return;
@@ -26,14 +28,14 @@ export const SubBuildingRenderer = {
         group.userData = { id: id, glb_file: glbPath, type: 'rect_building', width: width, height: height };
 
         // Register with RenderEngine
-        RenderEngine.worldGroup.add(group);
-        RenderEngine.objects[id] = group;
+        CRenderEngine.worldGroup.add(group);
+        CRenderEngine.objects[id] = group;
 
         // Load and add model
-        this.loadModel(glbPath).then(model => {
+        this.#loadModel(glbPath).then(model => {
             if (!model) return;
             // Check if object still exists (might have been removed)
-            if (!RenderEngine.objects[id]) return;
+            if (!CRenderEngine.objects[id]) return;
 
             const clone = model.clone();
             
@@ -68,17 +70,17 @@ export const SubBuildingRenderer = {
             
             group.add(clone);
         });
-    },
+    }
 
-    loadModel: function(path) {
+    #loadModel(path) {
         // Reuse RenderEngine cache
-        if (RenderEngine.modelCache[path]) {
-            return Promise.resolve(RenderEngine.modelCache[path]);
+        if (CRenderEngine.modelCache[path]) {
+            return Promise.resolve(CRenderEngine.modelCache[path]);
         }
 
         // Reuse or create promise
-        if (RenderEngine.loadingModelPromise && RenderEngine.loadingModelPromise[path]) {
-            return RenderEngine.loadingModelPromise[path];
+        if (CRenderEngine.loadingModelPromise && CRenderEngine.loadingModelPromise[path]) {
+            return CRenderEngine.loadingModelPromise[path];
         }
 
         const promise = new Promise((resolve) => {
@@ -94,7 +96,7 @@ export const SubBuildingRenderer = {
                     }
                 });
 
-                RenderEngine.modelCache[path] = scene;
+                CRenderEngine.modelCache[path] = scene;
                 resolve(scene);
             }, undefined, (err) => {
                 console.error('Error loading sub-building model:', path, err);
@@ -102,11 +104,12 @@ export const SubBuildingRenderer = {
             });
         });
 
-        if (RenderEngine.loadingModelPromise) {
-            RenderEngine.loadingModelPromise[path] = promise;
+        if (CRenderEngine.loadingModelPromise) {
+            CRenderEngine.loadingModelPromise[path] = promise;
         }
 
         return promise;
     }
 };
 
+export const CSubBuildingRenderer = new SubBuildingRenderer();
