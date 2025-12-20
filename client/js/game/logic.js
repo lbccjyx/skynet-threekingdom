@@ -46,7 +46,7 @@ export function handlePush(name, args) {
                     Game.data.rect_buildings_sub.push(newSub);
                 }
             });
-            log("Rect Sub Buildings updated count: " + args.rect_buildings_sub.length);
+            
             updateUI();
         }
     } else {

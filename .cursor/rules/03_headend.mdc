@@ -20,8 +20,11 @@ scenes/
 entities
     Entity.js：实体基类。
     Building.js：封装了普通建筑的渲染、进度条更新逻辑。
-    RectBuilding.js：封装了圈地（城墙、道路、农田）的渲染逻辑，包括墙体的自动连接算法。
     General.js：封装了武将的渲染逻辑。
+    rect_building/        
+        RectBuilding.js：封装了圈地（城墙、道路、农田）的渲染逻辑，包括墙体的自动连接算法。
+        build_rect.js 实现rect_building的拖拽
+
 render
     render_engine.js 单例，init时创建摄像机等3D场景。成员变量存放所有资源
     render_grids.js 单例，创建2D图片 主要是用于展示场景边界
@@ -30,11 +33,14 @@ render
     render_sub_building.js 单例：给有sub_building的rect_building创建3D对象
     render_texture.js 单例 给2D图片放置在3D环境中 一般图片展示需要用到
 
+input
+    d_building_inputs.js: 处理 d_building的拖拽和放置
+    input.js: 总的鼠标监听入口  包括 鼠标移动 (悬停, 拖拽, 平移) 会调用到其他函数具体处理
 
 game.js (入口)
 logic.js
 
-ui/, input/ ...
+ui/, / ...
 
 ### 资源下载脚本
 client/start_server.py 这个脚本执行后是开放8000端口，允许http从client/assets 文件夹下载图片资源等。

@@ -87,6 +87,20 @@ class RenderEngine {
         this.renderer.setSize(width, height);
     }
 
+    // [新增] 通用移除对象方法
+    RemoveObject(id) {
+        const obj = this.objects[id];
+        if (obj) {
+            this.worldGroup.remove(obj);
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) {
+                if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+                else obj.material.dispose();
+            }
+            delete this.objects[id];
+        }
+    }
+
     // 3D世界渲染循环
     animate() {
         requestAnimationFrame(() => this.animate());

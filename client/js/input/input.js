@@ -12,6 +12,7 @@ import { CRenderGrid } from '@render/render_grid.js';
 import { CRenderInput } from '@render/render_input.js';
 
 // Helper to find interactive parent
+// 找到其他地方定义的 this.mesh.userData
 function findInteractiveObject(object) {
     let curr = object;
     while(curr) {
@@ -142,6 +143,7 @@ export function initInteractionListeners() {
             const newX = worldPos.x - Game.dragState.offsetX;
             const newY = worldPos.y - Game.dragState.offsetY;
 
+            // 鼠标拖拽起始触发点。根据不同的type 调用不同的处理函数
             if (Game.dragState.type === 'rect_building') {
                 BuildRect.handleDragMove(id, newX, newY);
                  return;

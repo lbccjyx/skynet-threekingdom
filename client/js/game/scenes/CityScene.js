@@ -59,11 +59,11 @@ export class CityScene extends BaseScene {
 
         // Render RectBuildings (Region 1)
         if (Game.data.rect_buildings) {
-            log("Render RectBuildings (Region 1) count: " + Game.data.rect_buildings.length);
             Game.data.rect_buildings.forEach(r => {
-                log("r:" + JSON.stringify(r));
                 const region = r.region !== undefined ? r.region : 2; 
                 if (region !== 1) return;
+                // 父类 BaseScene.addentity的时候会触发到 entity.mount(); 又因为 Entity.mount()  会调用 Entity.createMesh();
+                //  所以相当于调用了RectBuilding.createMesh 也就是说每个rect_building都会调用一次 createMesh方法
                 this.addEntity(new RectBuilding(r, wallMap));
             });
         }

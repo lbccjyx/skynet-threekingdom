@@ -197,7 +197,14 @@ export const BuildRect = {
         Game.dragState.isDragging = true;
         Game.dragState.id = id;
         Game.dragState.type = 'rect_building';
-        Game.dragState.data = obj.userData.data; // {x, y, width, height...}
+        
+        // obj 是 RectBuilding.js 创建的 Main Group (this.mesh)
+        // userData包含了 { id, type: 'rect_building', width, height, rectBuildingId }
+        
+        // 整个rect_building一块被拖拽
+        const rectBuildingId = obj.userData.rectBuildingId;
+        const rectData = Game.data.rect_buildings ? Game.data.rect_buildings.find(r => r.id === rectBuildingId) : null;
+        Game.dragState.data = rectData;
 
         // For rect, position is center (cx, cy).
         // We want to snap x, y (top-left) to grid.
@@ -211,8 +218,8 @@ export const BuildRect = {
         Game.dragState.offsetY = worldPos.y - cy;
         
         // Show Ghost
-        const w = obj.userData.width;
-        const h = obj.userData.height;
+        const w = rectData ? rectData.width : obj.userData.width;
+        const h = rectData ? rectData.height : obj.userData.height;
         const tlX = cx - w / 2;
         const tlY = cy - h / 2;
         

@@ -13,7 +13,7 @@ class SubBuildingRender
      * @param {number} y - World Y position
      * @param {string} glbPath - Path to GLB model
      */
-    Render(id, x, y, glbPath, width, height) {
+    Render(id, x, y, glbPath, width, height, rectBuildingId) {
         // If object exists, update position
         if (CRenderEngine.objects[id]) {
             const obj = CRenderEngine.objects[id];
@@ -25,7 +25,7 @@ class SubBuildingRender
         // Create container group
         const group = new THREE.Group();
         group.position.set(x, -10, y);
-        group.userData = { id: id, glb_file: glbPath, type: 'rect_building', width: width, height: height };
+        group.userData = { id: id, glb_file: glbPath, type: 'rect_building', width: width, height: height, rectBuildingId: rectBuildingId };
 
         // Register with RenderEngine
         CRenderEngine.worldGroup.add(group);
@@ -69,6 +69,55 @@ class SubBuildingRender
             }
             
             group.add(clone);
+        });
+    }
+
+    /**
+     * Load model and add directly to a parent group
+     * @param {THREE.Group} parentGroup - The parent group to add the model to
+     * @param {number} localX - Local X position relative to parent
+     * @param {number} localY - Local Y position relative to parent (Z in 3D)
+     * @param {string} glbPath - Path to GLB model
+     * @param {number} width - Expected width in tiles
+     * @param {number} height - Expected height in tiles
+     */
+    AddToGroup(parentGroup, localX, localY, glbPath, width, height) {
+        this.#loadModel(glbPath).then(model => {
+            if (!model) return;
+            
+            // Check if parent still exists (if it was removed while loading)
+            // But parentGroup is a reference, so it's fine unless it was disposed?
+            
+            const clone = model.clone();
+            
+            // Auto-scale to TILE_SIZE to ensure visibility
+            const box = new THREE.Box3().setFromObject(clone);
+            const size = box.getSize(new THREE.Vector3());
+            
+            if (size.x > 0 && size.z > 0) {
+                let scale = TILE_SIZE / size.x;
+                
+                // If width/height provided, scale to match total dimensions
+                if (width && height) {
+                    const targetWidth = width * TILE_SIZE;
+                    const targetDepth = height * TILE_SIZE;
+                    
+                    const scaleX = targetWidth / size.x;
+                    const scaleZ = targetDepth / size.z;
+                    // Use the smaller scale to fit within dimensions, or specific axis scales
+                    scale = Math.min(scaleX, scaleZ); 
+                    
+                    clone.scale.set(scale, scale, scale);
+                } else {
+                    clone.scale.set(scale, scale, scale);
+                }
+            }
+            
+            // Position locally. In 3D, Y is up, Z is depth.
+            // localY corresponds to Z.
+            clone.position.set(localX, 0, localY);
+            
+            parentGroup.add(clone);
         });
     }
 

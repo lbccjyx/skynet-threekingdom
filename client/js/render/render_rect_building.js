@@ -1,6 +1,7 @@
 import { TILE_SIZE, RECT_FARM, RECT_WALL, RECT_HOUSE } from '../core/config.js';
 import { CRenderEngine } from '@render/render_engine.js';
 
+// 原有的rect_building的3D对象渲染逻辑
 class RenderRectBuilding {
     constructor(){}
 

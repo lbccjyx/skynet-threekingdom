@@ -7,14 +7,12 @@ export class BaseScene {
     }
 
     enter() {
-        console.log(`Entering scene: ${this.name}`);
         this.clear();
         this.setup();
         this.render();
     }
 
     exit() {
-        console.log(`Exiting scene: ${this.name}`);
         this.clear();
     }
 

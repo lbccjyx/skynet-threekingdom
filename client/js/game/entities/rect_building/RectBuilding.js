@@ -10,7 +10,9 @@ import { CRenderTexture } from '@render/render_texture.js';
 // 此类主要用于渲染圈地，包括渲染圈地、渲染子建筑、渲染城墙等操作
 export class RectBuilding extends Entity {
     constructor(data, wallMap = null) {
+        // data是proto消息 .RectBuilding
         super(data);
+        this.id = data.id;
         this.type = 'rect_building';
         this.width = data.width;
         this.height = data.height;
@@ -28,38 +30,6 @@ export class RectBuilding extends Entity {
             // New Mode: Render sub-buildings
             this.renderSubBuildings(subs);
             
-            // Render a transparent base for selection/hit detection
-            this.mesh = CRenderTexture.CreateEntity(
-                this.getRenderId(),
-                null, // No image
-                this.width,
-                this.height,
-                this.x + this.width / 2, // Centered X
-                this.y + this.height / 2 // Centered Y
-            );
-            
-            // Store dimensions in userData for drag logic
-            if (this.mesh) {
-                this.mesh.userData.width = this.width;
-                this.mesh.userData.height = this.height;
-                this.mesh.userData.type = 'rect_building'; // Must match check in d_build_rect_input
-                
-                // Store original data needed for logic
-                this.mesh.userData.data = this.data; 
-            }
-
-            if (this.mesh) {
-                this.mesh.rotation.x = -Math.PI / 2;
-                this.mesh.rotation.y = 0;
-                this.mesh.rotation.z = 0;
-                this.mesh.quaternion.setFromEuler(this.mesh.rotation);
-            }
-
-            if (this.mesh && this.mesh.material) {
-                this.mesh.material.opacity = 0.3; // Lightly visible
-                this.mesh.material.color.setHex(0xaaaaaa); // Grayish
-            }
-
         } else {
             this.createLegacyMesh(def);
         }
@@ -78,30 +48,53 @@ export class RectBuilding extends Entity {
         return subs;
     }
 
+    // 对于每个子建筑进行简单的3D对象展示
     renderSubBuildings(subs) {
+        // Create the main group for the rect building
+        this.mesh = new THREE.Group();
+        
+        // Position at the center of the rect
+        const centerX = this.x + this.width / 2;
+        const centerY = this.y + this.height / 2;
+        this.mesh.position.set(centerX, 0, centerY);
+
+        // Set userData for interaction (dragging, etc.)
+        this.mesh.userData = {
+            id: this.getRenderId(),
+            type: 'rect_building',
+            width: this.width,
+            height: this.height,
+            rectBuildingId: this.id // For build_rect lookup
+        };
+
+        // Register with RenderEngine
+        CRenderEngine.worldGroup.add(this.mesh);
+        CRenderEngine.objects[this.getRenderId()] = this.mesh;
+
         subs.forEach(sub => {
             const buildDef = window.BUILDING_DEFINITIONS[sub.building_type];
-
-            // 经过断点 首次圈地时 sub_building会在这边返回return 导致没有渲染sub_building
             if (!buildDef) 
             {
                 log("proto消息RectBuildingSub的building_type错误  当前building_type: " + sub.building_type);
                 return;
             }
 
-            const subId = `rect_sub_${sub.id}_${sub.x}_${sub.y}`;
-            this.subRenderIds.push(subId);
-
-            // Determine GLB path
+            // We don't need subId tracking anymore since everything is in one group
+            
             let glbPath = buildDef.image; // Default
             if (buildDef.imageDir) {
                 glbPath = `${buildDef.imageDir}/${sub.building_index}.glb`;
             }
             
-            CSubBuildingRender.Render(
-                subId,
-                sub.x,
-                sub.y,
+            // Calculate local position relative to the rect center
+            const localX = sub.x - centerX;
+            const localY = sub.y - centerY;
+
+            // Add to the main group
+            CSubBuildingRender.AddToGroup(
+                this.mesh,
+                localX,
+                localY,
                 glbPath,
                 buildDef.width,
                 buildDef.height
@@ -110,11 +103,7 @@ export class RectBuilding extends Entity {
     }
 
     createLegacyMesh(def) {
-        // Safety check: if no definition or image, skip legacy mesh creation
-        // This can happen during transient states where sub-buildings are updated but parent rect isn't yet
-        // leading to getSubBuildings() returning empty because of coordinate mismatch.
         if (!def || !def.image) {
-            // log("RectBuilding: No legacy definition found for type " + this.data.type);
             return;
         }
 
@@ -130,6 +119,7 @@ export class RectBuilding extends Entity {
             // Use specific models for Pillar and Rail
             glbFiles = ['assets/glb_file/wall_pillar.glb', 'assets/glb_file/wall_rail.glb'];
 
+            // 函数指针 传入函数 后续如果有此函数 会在 RenderRectBuilding的 handleCustomProcess 处理逻辑
             customProcess = (models, wx, wy, config) => {
                 return this.processWallTile(models, wx, wy, config);
             };
@@ -147,7 +137,7 @@ export class RectBuilding extends Entity {
         );
     }
 
-    // Helper for Wall Connectivity (Legacy)
+    // 城墙连接算法
     processWallTile(models, wx, wy, config) {
         // If no wallMap provided, cannot calculate connectivity properly
         if (!this.wallMap) return [];
@@ -223,21 +213,10 @@ export class RectBuilding extends Entity {
 
     // 删除的时候会调用
     unmount() {
-        // Cleanup sub-buildings
-        if (this.subRenderIds) {
-            this.subRenderIds.forEach(id => {
-                const obj = CRenderEngine.objects[id];
-                if (obj) {
-                    CRenderEngine.worldGroup.remove(obj);
-                    if (obj.geometry) obj.geometry.dispose();
-                    if (obj.material) {
-                         if (Array.isArray(obj.material)) obj.material.forEach(m=>m.dispose());
-                         else obj.material.dispose();
-                    }
-                    delete CRenderEngine.objects[id];
-                }
-            });
-            this.subRenderIds = [];
+        // Cleanup main mesh
+        if (this.mesh) {
+            CRenderEngine.RemoveObject(this.getRenderId());
+            this.mesh = null;
         }
         super.unmount();
     }
