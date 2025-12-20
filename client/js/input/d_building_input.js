@@ -2,10 +2,11 @@ import { Game } from '../core/state.js';
 import { sendRequest } from '../core/api.js';
 import { log } from '@utils';
 import { updateGameView } from '@game/game.js';
-import { GhostManager } from '@game/managers/GhostManager.js';
+import { TextureGhostManager } from '@game/managers/TextureGhostManager.js';
 import { CITY_BOUNDARY } from '@config';
 import { TILE_SIZE } from '@config';
 import { getNumberAfterUnderscore } from '@entities/Entity.js';
+import { CRenderGrid } from '@render/render_grid.js';
 
 export const BuildingInput = {
     // Handle Context Menu for Building Placement
@@ -31,7 +32,7 @@ export const BuildingInput = {
                 Game.placementState.y = buildY;
                 
                 CRenderGrid.SetVisibility(true);
-                GhostManager.createGhost(def, buildX, buildY);
+                TextureGhostManager.CreateGhost(def, buildX, buildY);
 
                 menu.remove();
                 document.removeEventListener('click', closeMenu);
@@ -81,7 +82,7 @@ export const BuildingInput = {
         Game.placementState.active = false;
         Game.placementState.def = null;
         CRenderGrid.SetVisibility(false);
-        GhostManager.removeGhost();
+        TextureGhostManager.RemoveGhost();
     },
 
     // Handle Mouse Move for Placement (Ghost Update)
@@ -92,7 +93,7 @@ export const BuildingInput = {
         if (snapX !== Game.placementState.x || snapY !== Game.placementState.y) {
             Game.placementState.x = snapX;
             Game.placementState.y = snapY;
-            GhostManager.updateGhost(snapX, snapY);
+            TextureGhostManager.UpdateGhost(snapX, snapY);
         }
     },
 
@@ -114,7 +115,7 @@ export const BuildingInput = {
         Game.dragState.offsetY = worldPos.y - objGameY;
         
         // Initialize Ghost at current position
-        GhostManager.createGhost(def, objGameX, objGameY);
+        TextureGhostManager.CreateGhost(def, objGameX, objGameY);
         
         CRenderGrid.SetVisibility(true);
         log(`Started dragging building ${id}`);
@@ -144,7 +145,7 @@ export const BuildingInput = {
          const snappedCY = tlY + h / 2;
          
          // Update Ghost
-         GhostManager.updateGhost(snappedCX, snappedCY);
+         TextureGhostManager.UpdateGhost(snappedCX, snappedCY);
          
          // Store for DragEnd
          Game.dragState.lastBuildingX = snappedCX;
@@ -172,7 +173,7 @@ export const BuildingInput = {
              // But simple check for center point might be enough or check corners
              if (!this.IsPosUseful(finalX, finalY)) {
                   log("Cannot move outside city boundary!");
-                  GhostManager.removeGhost();
+                  TextureGhostManager.RemoveGhost();
                   Game.dragState.isDragging = false;
                   Game.dragState.id = null;
                   Game.dragState.type = null;
@@ -200,7 +201,7 @@ export const BuildingInput = {
             }
         });
 
-        GhostManager.removeGhost();
+        TextureGhostManager.RemoveGhost();
         Game.dragState.isDragging = false;
         Game.dragState.id = null;
         Game.dragState.type = null;

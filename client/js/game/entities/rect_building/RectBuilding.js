@@ -3,7 +3,7 @@ import { CRenderEngine } from '@render/render_engine.js';
 import { TILE_SIZE } from '@config';
 import { Game } from '@core/state.js';
 import { log } from '@utils';
-import { CSubBuildingRenderer } from '@render/render_sub_building.js';
+import { CSubBuildingRender } from '@render/render_sub_building.js';
 import { CRenderRectBuilding } from '@render/render_rect_building.js';
 import { CRenderTexture } from '@render/render_texture.js';
 
@@ -23,6 +23,7 @@ export class RectBuilding extends Entity {
         const def = definitions[this.data.type] || {};
         const subs = this.getSubBuildings();
 
+        // 区分是否有sub_building走的两个不同的3D对象渲染逻辑
         if (subs.length > 0) {
             // New Mode: Render sub-buildings
             this.renderSubBuildings(subs);
@@ -80,7 +81,13 @@ export class RectBuilding extends Entity {
     renderSubBuildings(subs) {
         subs.forEach(sub => {
             const buildDef = window.BUILDING_DEFINITIONS[sub.building_type];
-            if (!buildDef) return;
+
+            // 经过断点 首次圈地时 sub_building会在这边返回return 导致没有渲染sub_building
+            if (!buildDef) 
+            {
+                log("proto消息RectBuildingSub的building_type错误  当前building_type: " + sub.building_type);
+                return;
+            }
 
             const subId = `rect_sub_${sub.id}_${sub.x}_${sub.y}`;
             this.subRenderIds.push(subId);
@@ -90,8 +97,8 @@ export class RectBuilding extends Entity {
             if (buildDef.imageDir) {
                 glbPath = `${buildDef.imageDir}/${sub.building_index}.glb`;
             }
-            log("glbPath: " + glbPath);
-            CSubBuildingRenderer.Render(
+            
+            CSubBuildingRender.Render(
                 subId,
                 sub.x,
                 sub.y,

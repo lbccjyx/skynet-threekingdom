@@ -3,7 +3,7 @@ import { Game } from '@core/state.js';
 import { sendRequest } from '@core/api.js';
 import { log } from '@core/utils.js';
 import { switchView, updateGameView } from '../game/game.js';
-import { GhostManager } from '../game/managers/GhostManager.js';
+import { TextureGhostManager } from '../game/managers/TextureGhostManager.js';
 import { CRenderEngine } from '@render/render_engine.js';
 import { BuildRect } from '@entities/rect_building/build_rect.js';
 import { BuildingInput } from './d_building_input.js';
@@ -38,7 +38,7 @@ export function setupContextMenus() {
             Game.placementState.active = false;
             Game.placementState.def = null;
             CRenderGrid.setVisibility(false);
-            GhostManager.removeGhost();
+            TextureGhostManager.RemoveGhost();
             log("取消建造");
             return;
         }

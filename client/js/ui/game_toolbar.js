@@ -3,7 +3,7 @@ import { BuildRect } from '@entities/rect_building/build_rect.js';
 import { CRenderInput } from '@render/render_input.js';
 import { log } from '../core/utils.js';
 import { updateGameView } from '../game/game.js';
-import { GhostManager } from '../game/managers/GhostManager.js';
+import { TextureGhostManager } from '../game/managers/TextureGhostManager.js';
 import { sendRequest } from '../core/api.js';
 import { CRenderGrid } from '@render/render_grid.js';
 
@@ -129,7 +129,7 @@ export const GameToolbar = {
         log(`Selected ${def.name} BuildingType: ${BuildingType}`);
         
         if (Game.placementState.active) {
-            GhostManager.removeGhost();
+            TextureGhostManager.RemoveGhost();
         }
 
         Game.placementState.active = true;
@@ -142,7 +142,7 @@ export const GameToolbar = {
         Game.placementState.y = 0;
 
         CRenderGrid.SetVisibility(true);
-        GhostManager.createGhost(def, 0, 0);
+        TextureGhostManager.CreateGhost(def, 0, 0);
     },
 
     // def == RECT_BUILDING_DEFINITIONS中的某条数据
@@ -168,7 +168,7 @@ export const GameToolbar = {
             // Cancel other modes
             if (Game.placementState.active) {
                 Game.placementState.active = false;
-                GhostManager.removeGhost();
+                TextureGhostManager.RemoveGhost();
             }
             if (BuildRect.active) {
                 BuildRect.stop();

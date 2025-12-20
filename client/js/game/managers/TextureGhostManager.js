@@ -1,12 +1,13 @@
 import { CRenderEngine } from '@render/render_engine.js';
 import { TILE_SIZE } from '@config';
 import { CRenderTexture } from '@render/render_texture.js';
+import { CRenderInput } from '@render/render_input.js';
 
-export const GhostManager = {
+export const TextureGhostManager = {
     ghostId: 'ghost_building',
 
-    createGhost: function(def, x, y) {
-        this.removeGhost();
+    CreateGhost: function(def, x, y) {
+        this.RemoveGhost();
 
         const width = def.width * TILE_SIZE;
         const height = def.height * TILE_SIZE;
@@ -26,11 +27,11 @@ export const GhostManager = {
         return mesh;
     },
 
-    updateGhost: function(x, y) {
+    UpdateGhost: function(x, y) {
         CRenderInput.UpdateEntityPosition(this.ghostId, x, y);
     },
 
-    removeGhost: function() {
+    RemoveGhost: function() {
         const obj = CRenderEngine.objects[this.ghostId];
         if (obj) {
             CRenderEngine.worldGroup.remove(obj);

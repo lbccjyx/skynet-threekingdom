@@ -3,7 +3,7 @@ import { log } from '@utils';
 import { TILE_SIZE } from '@config';
 
 // 渲染子建筑 render_engine 的补充
-class SubBuildingRenderer
+class SubBuildingRender
 {
     constructor(){}
     /**
@@ -112,4 +112,4 @@ class SubBuildingRenderer
     }
 };
 
-export const CSubBuildingRenderer = new SubBuildingRenderer();
+export const CSubBuildingRender = new SubBuildingRender();

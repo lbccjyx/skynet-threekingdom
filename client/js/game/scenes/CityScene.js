@@ -5,6 +5,7 @@ import { RectBuilding } from '../entities/rect_building/RectBuilding.js';
 import { TILE_SIZE } from '@config';
 import { UI } from '@ui/elements.js';
 import { CRenderTexture } from '@render/render_texture.js';
+import { log } from '../../core/utils.js';
 
 export class CityScene extends BaseScene {
     constructor() {
@@ -17,14 +18,16 @@ export class CityScene extends BaseScene {
         super.enter();
     }
 
+    // 
     setup() {
+
         // Render Background
         const bgMesh = CRenderTexture.CreateEntity('city_bg', 'assets/background.png', TILE_SIZE*40, TILE_SIZE*50, 0, 0);
         bgMesh.position.set(0, -50, 0); 
         bgMesh.quaternion.set(0, 0, 0, 1); 
         bgMesh.rotation.set(-Math.PI / 2, 0, Math.PI / 4);
 
-        // Pre-calculate Wall Map
+        // 计算城墙的连接关系
         const wallMap = new Set();
         if (Game.data.rect_buildings) {
             Game.data.rect_buildings.forEach(r => {
@@ -56,7 +59,9 @@ export class CityScene extends BaseScene {
 
         // Render RectBuildings (Region 1)
         if (Game.data.rect_buildings) {
+            log("Render RectBuildings (Region 1) count: " + Game.data.rect_buildings.length);
             Game.data.rect_buildings.forEach(r => {
+                log("r:" + JSON.stringify(r));
                 const region = r.region !== undefined ? r.region : 2; 
                 if (region !== 1) return;
                 this.addEntity(new RectBuilding(r, wallMap));

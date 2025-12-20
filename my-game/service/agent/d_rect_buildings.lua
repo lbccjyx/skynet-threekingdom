@@ -136,6 +136,7 @@ function handler.init(env)
                 table.insert(sub_buildings, {
                     id = res.id,
                     rect_building_id = rect_id,
+                    building_type = item.config.sub_buildings,
                     x = center_x,
                     y = center_y,
                     building_index = item.variant_index

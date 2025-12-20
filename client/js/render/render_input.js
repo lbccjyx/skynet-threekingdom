@@ -88,7 +88,7 @@ class RenderInput {
 
     // 更新建筑的位置
     UpdateEntityPosition(id, x, y) {
-        const obj = CCRenderEngine.objects[id];
+        const obj = CRenderEngine.objects[id];
         if (obj) {
              obj.position.set(x, 1, y);
         }

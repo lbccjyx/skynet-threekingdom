@@ -12,7 +12,7 @@ core/ (基础配置, 网络, 状态)
 game/
 managers/ (SceneManager, )
     SceneManager.js：负责管理和切换场景。
-    GhostManager.js: 负责
+    TextureGhostManager.js: 负责2D图片移动位置时 生成一张半透明的2D图片 并且跟随鼠标
 scenes/
     BaseScene.js：场景基类，定义了 enter, exit, update, render 等生命周期。
     CityScene.js & MapScene.js：分别处理城内和城外的逻辑与渲染。
@@ -22,11 +22,18 @@ entities
     Building.js：封装了普通建筑的渲染、进度条更新逻辑。
     RectBuilding.js：封装了圈地（城墙、道路、农田）的渲染逻辑，包括墙体的自动连接算法。
     General.js：封装了武将的渲染逻辑。
+render
+    render_engine.js 单例，init时创建摄像机等3D场景。成员变量存放所有资源
+    render_grids.js 单例，创建2D图片 主要是用于展示场景边界
+    render_input.js 单例：获取鼠标位置 处理建筑更新 设置建筑选中状态 更新建筑建筑条 等
+    render_rect_building.js 单例：给没有sub_building的rect_building创建3D对象
+    render_sub_building.js 单例：给有sub_building的rect_building创建3D对象
+    render_texture.js 单例 给2D图片放置在3D环境中 一般图片展示需要用到
+
 
 game.js (入口)
 logic.js
-render/
-render_engine.js (底层 3D 引擎封装)
+
 ui/, input/ ...
 
 ### 资源下载脚本

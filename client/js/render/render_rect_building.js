@@ -38,7 +38,7 @@ class RenderRectBuilding {
         return { scaleX, scaleY, scaleZ, liftY, rotationY };
     }
 
-    //创建占位符网格
+    // 3D模型错误时的替换 创建占位符网格
     #createPlaceholderTile(tx, tz) {
         const geo = new THREE.BoxGeometry(TILE_SIZE - 2, 0, TILE_SIZE - 2);
         const mat = new THREE.MeshLambertMaterial({ 
@@ -250,5 +250,4 @@ class RenderRectBuilding {
     }
 }
 
-// 修正命名冲突：使用不同名称导出实例
 export const CRenderRectBuilding = new RenderRectBuilding();

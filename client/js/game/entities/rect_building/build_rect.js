@@ -132,6 +132,7 @@ export const BuildRect = {
                 }
                 this.startPos = null;
                 
+                // 最后会调用到CityScene的setup方法 重新渲染场景
                 updateGameView();
                 
                 this.stop();
