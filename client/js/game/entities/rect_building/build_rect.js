@@ -206,6 +206,10 @@ export const BuildRect = {
         const rectData = Game.data.rect_buildings ? Game.data.rect_buildings.find(r => r.id === rectBuildingId) : null;
         Game.dragState.data = rectData;
 
+        // Store original position for revert
+        Game.dragState.originalX = obj.position.x;
+        Game.dragState.originalZ = obj.position.z;
+
         // For rect, position is center (cx, cy).
         // We want to snap x, y (top-left) to grid.
         // let's calculate offset from center
@@ -216,14 +220,6 @@ export const BuildRect = {
         Game.dragState.offsetX = worldPos.x - cx;
         // Correct offset calculation using Z as Y in isometric/top-down view logic
         Game.dragState.offsetY = worldPos.y - cy;
-        
-        // Show Ghost
-        const w = rectData ? rectData.width : obj.userData.width;
-        const h = rectData ? rectData.height : obj.userData.height;
-        const tlX = cx - w / 2;
-        const tlY = cy - h / 2;
-        
-        this.updateGhost(tlX, tlY, w, h);
         
         CRenderGrid.SetVisibility(true);
     },
@@ -243,7 +239,11 @@ export const BuildRect = {
              tlX = Math.round(tlX / TILE_SIZE) * TILE_SIZE;
              tlY = Math.round(tlY / TILE_SIZE) * TILE_SIZE;
 
-             // Update Ghost
+             // Directly move the object
+             const centerX = tlX + w / 2;
+             const centerY = tlY + h / 2;
+             
+             obj.position.set(centerX, 0, centerY);
              this.updateGhost(tlX, tlY, w, h);
              
              // Store for DragEnd
@@ -273,10 +273,19 @@ export const BuildRect = {
              tlY = Math.round(tlY / TILE_SIZE) * TILE_SIZE;
          }
 
+         // No ghost to clear if we moved the object directly
+         // But we might have ghost from `start` (placing new), 
+         // but handleDragEnd is only for existing objects?
+         // Safety clear
          this.clearGhost();
 
         // Check Boundary
          if (!this.IsRectPosUseful(tlX, tlY, w, h)) {
+            // Revert Position
+            if (Game.dragState.originalX !== undefined) {
+                obj.position.set(Game.dragState.originalX, 0, Game.dragState.originalZ);
+            }
+            
             Game.dragState.isDragging = false;
             Game.dragState.id = null;
             Game.dragState.type = null;
@@ -296,6 +305,10 @@ export const BuildRect = {
                 if (r) { r.x = res.rect_building.x; r.y = res.rect_building.y; }
                 updateGameView();
             } else {
+                // Revert on server fail
+                if (Game.dragState.originalX !== undefined) {
+                    obj.position.set(Game.dragState.originalX, 0, Game.dragState.originalZ);
+                }
                 updateGameView();
             }
         });

@@ -4,8 +4,6 @@ import { TILE_SIZE } from '@config';
 import { Game } from '@core/state.js';
 import { log } from '@utils';
 import { CSubBuildingRender } from '@render/render_sub_building.js';
-import { CRenderRectBuilding } from '@render/render_rect_building.js';
-import { CRenderTexture } from '@render/render_texture.js';
 
 // 此类主要用于渲染圈地，包括渲染圈地、渲染子建筑、渲染城墙等操作
 export class RectBuilding extends Entity {
@@ -21,18 +19,11 @@ export class RectBuilding extends Entity {
     }
 
     createMesh() {
-        const definitions = window.RECT_BUILDING_DEFINITIONS || {};
-        const def = definitions[this.data.type] || {};
+        // const definitions = window.RECT_BUILDING_DEFINITIONS || {};
+        // const def = definitions[this.data.type] || {};
         const subs = this.getSubBuildings();
 
-        // 区分是否有sub_building走的两个不同的3D对象渲染逻辑
-        if (subs.length > 0) {
-            // New Mode: Render sub-buildings
-            this.renderSubBuildings(subs);
-            
-        } else {
-            this.createLegacyMesh(def);
-        }
+        this.renderSubBuildings(subs);
     }
 
     getSubBuildings() {
@@ -71,6 +62,8 @@ export class RectBuilding extends Entity {
         CRenderEngine.worldGroup.add(this.mesh);
         CRenderEngine.objects[this.getRenderId()] = this.mesh;
 
+        const WALL_TYPE = 3;
+
         subs.forEach(sub => {
             const buildDef = window.BUILDING_DEFINITIONS[sub.building_type];
             if (!buildDef) 
@@ -87,55 +80,34 @@ export class RectBuilding extends Entity {
             }
             
             // Calculate local position relative to the rect center
-            const localX = sub.x - centerX;
-            const localY = sub.y - centerY;
+            const localX = sub.x - centerX + TILE_SIZE / 2;
+            const localY = sub.y - centerY + TILE_SIZE / 2;
 
-            // Add to the main group
-            CSubBuildingRender.AddToGroup(
-                this.mesh,
-                localX,
-                localY,
-                glbPath,
-                buildDef.width,
-                buildDef.height
-            );
+            if (this.data.type === WALL_TYPE && this.wallMap) {
+                //this.mesh.position.y = -80;
+                log("sub.x sub.y localX localY: " + sub.x + " " + sub.y + " " + localX + " " + localY);
+                CSubBuildingRender.AddWall(
+                    this.mesh,
+                    this.wallMap,
+                    sub.x,
+                    sub.y,
+                    localX,
+                    localY
+                );
+            } else {
+                // Add to the main group
+                CSubBuildingRender.AddToGroup(
+                    this.mesh,
+                    localX,
+                    localY,
+                    glbPath,
+                    buildDef.width,
+                    buildDef.height
+                );
+            }
         });
     }
 
-    createLegacyMesh(def) {
-        if (!def || !def.image) {
-            return;
-        }
-
-        const WALL_TYPE = 3; 
-
-        const cx = this.x + this.width / 2;
-        const cy = this.y + this.height / 2;
-        
-        let customProcess = null;
-        let glbFiles = def.image;
-
-        if (this.data.type === WALL_TYPE) {
-            // Use specific models for Pillar and Rail
-            glbFiles = ['assets/glb_file/wall_pillar.glb', 'assets/glb_file/wall_rail.glb'];
-
-            // 函数指针 传入函数 后续如果有此函数 会在 RenderRectBuilding的 handleCustomProcess 处理逻辑
-            customProcess = (models, wx, wy, config) => {
-                return this.processWallTile(models, wx, wy, config);
-            };
-        }
-
-        this.mesh = CRenderRectBuilding.CreateFlatEntity(
-            this.getRenderId(), 
-            this.width, 
-            this.height, 
-            cx, 
-            cy, 
-            this.data.type, 
-            glbFiles,
-            customProcess
-        );
-    }
 
     // 城墙连接算法
     processWallTile(models, wx, wy, config) {

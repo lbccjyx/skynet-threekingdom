@@ -1,6 +1,6 @@
 import { CRenderEngine } from '@render/render_engine.js';
 import { log } from '@utils';
-import { TILE_SIZE } from '@config';
+import { TILE_SIZE, RECT_WALL } from '../core/config.js';
 
 // 渲染子建筑 render_engine 的补充
 class SubBuildingRender
@@ -118,6 +118,85 @@ class SubBuildingRender
             clone.position.set(localX, 0, localY);
             
             parentGroup.add(clone);
+        });
+    }
+
+    AddWall(parentGroup, wallMap, globalX, globalY, localX, localY) {
+        const pillarPath = 'assets/glb_file/wall_pillar.glb';
+        const railPath = 'assets/glb_file/wall_rail.glb';
+
+        Promise.all([
+            this.#loadModel(pillarPath),
+            this.#loadModel(railPath)
+        ]).then(([pillarModel, railModel]) => {
+            if (!pillarModel || !railModel) return;
+
+            // Calculate connectivity
+            const tx = Math.floor(globalX / TILE_SIZE);
+            const ty = Math.floor(globalY / TILE_SIZE);
+            
+            const hasN = wallMap.has(`${tx},${ty-1}`);
+            const hasS = wallMap.has(`${tx},${ty+1}`);
+            const hasW = wallMap.has(`${tx-1},${ty}`);
+            const hasE = wallMap.has(`${tx+1},${ty}`);
+
+            // Calculate base scale
+            // Assuming both models have similar base scale requirements (usually normalized to TILE_SIZE)
+            // Using pillar as reference
+            const box = new THREE.Box3().setFromObject(pillarModel);
+            const size = box.getSize(new THREE.Vector3());
+            
+            // 计算子建筑的高度(默认3D模型的中心点在0 0 0 所以需要把高度抬高到中心点)
+            let baseScale = 1;
+            if (size.x > 0) {
+                baseScale = TILE_SIZE / size.x;
+            }
+            var nHeight = (size.y * baseScale) / 2;
+
+            // 给城墙写的特殊高度
+            nHeight /= 3;
+
+            const addPillar = (rotY) => {
+                const clone = pillarModel.clone();
+                // Legacy scale logic: scale.x*2/5, scale.y/5, scale.z/2
+                // Here baseScale applies to all axes roughly, but we tune it
+                // Note: The original logic used `scale` object which was {x: s, y: s, z: s} essentially
+                clone.scale.set(baseScale * 2/5, baseScale / 5, baseScale / 2);
+                clone.rotation.y = rotY;
+                clone.position.set(localX, nHeight, localY);
+                parentGroup.add(clone);
+            };
+
+            const addRail = (rotY, shiftX, shiftZ) => {
+                const clone = railModel.clone();        
+                clone.scale.set(baseScale / 5, baseScale / 5, baseScale / 2); 
+                clone.rotation.y = rotY;
+                // Position offset is relative to the tile center (localX, localY)
+                // shiftX/Z are in TILE_SIZE units
+                clone.position.set(
+                    localX + shiftX * TILE_SIZE, 
+                    nHeight, 
+                    localY + shiftZ * TILE_SIZE
+                );       
+                parentGroup.add(clone);
+            };
+
+            let IsPillarShow = false;
+            if (hasE) {
+                addRail(0, 0, 0);
+                addPillar(Math.PI/2);
+                IsPillarShow = true;
+            }
+            
+            if (hasS) {
+                addRail(Math.PI/2, 0, 1.2);
+                addPillar(Math.PI);
+                IsPillarShow = true;
+            }
+
+            if(!IsPillarShow) {
+                addPillar(Math.PI/2);
+            }
         });
     }
 

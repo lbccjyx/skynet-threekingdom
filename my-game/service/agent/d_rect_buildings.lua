@@ -10,8 +10,9 @@ function handler.init(env)
     local m_save_items = env.envSaveItems
     local m_send_package = env.envSendPackage
 
-    local function get_tile_size()
-        return tonumber(skynet.getenv("TILE_SIZE")) or 30
+    local function get_tile_size()        
+        local nDetailTimes = 2
+        return tonumber(skynet.getenv("TILE_SIZE")) / nDetailTimes or 30 / nDetailTimes
     end
 
     -- 获取矩形的所有子建筑配置
