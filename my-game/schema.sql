@@ -84,6 +84,8 @@ CREATE TABLE `s_buildings` (
   `cost_num2` int DEFAULT '0',
   `cost_item3` int DEFAULT '0',
   `cost_num3` int DEFAULT '0',
+  `is_sub_building` int DEFAULT '0' comment '是否是子建筑',
+  `limit_num` int DEFAULT '0' comment '子建筑数量限制',
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_id_lev` (`id`, `level`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

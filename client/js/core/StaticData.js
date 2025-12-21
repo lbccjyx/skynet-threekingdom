@@ -32,6 +32,14 @@ RECT_BUILDING_TOOLBAR = {
     5: { key: 5, name: '低密度居民区' },
 };
 
+ERB_TYPE = {
+    FARM: 1,
+    ROAD: 2,
+    WALL: 3,
+    HOUSE_HIGH_DENSITY: 4,
+    HOUSE_LOW_DENSITY: 5
+};
+
 RECT_BUILDING_DEFINITIONS = {
     1: { key: 1, name: '农田', sub_buildings: 101, sub_max_num: 1 },
     2: { key: 2, name: '道路', sub_buildings: 301, sub_max_num: 1 },

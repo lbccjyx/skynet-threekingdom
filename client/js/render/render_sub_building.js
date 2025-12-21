@@ -81,7 +81,7 @@ class SubBuildingRender
      * @param {number} width - Expected width in tiles
      * @param {number} height - Expected height in tiles
      */
-    AddToGroup(parentGroup, localX, localY, glbPath, width, height) {
+    AddToGroup(parentGroup, localX, localY, glbPath, width, height, RectType) {
         this.#loadModel(glbPath).then(model => {
             if (!model) return;
             
@@ -116,7 +116,11 @@ class SubBuildingRender
             // Position locally. In 3D, Y is up, Z is depth.
             // localY corresponds to Z.
             clone.position.set(localX, 0, localY);
-            
+
+            if (RectType === ERB_TYPE.FARM)
+            {
+                clone.position.y = 13;
+            }
             parentGroup.add(clone);
         });
     }

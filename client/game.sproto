@@ -84,6 +84,7 @@ build 4 {
     response {
         ok 0 : boolean
         building 1 : Building
+        error 2 : string
     }
 }
 
@@ -96,6 +97,7 @@ build_move 5 {
     response {
         ok 0 : boolean
         building 1 : Building
+        error 2 : string
     }
 }
 
@@ -131,6 +133,7 @@ build_rect 6{
     response {
         ok 0 : boolean
         rect_building 1 : RectBuilding
+        error 2 : string
     }
 }
 
@@ -144,6 +147,7 @@ build_rect_move 7 {
     response {
         ok 0 : boolean
         rect_building 1 : RectBuilding
+        error 2 : string
     }
 }
 

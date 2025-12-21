@@ -1,4 +1,5 @@
 local skynet = require "skynet"
+local collision_utils = require "agent.collision_utils"
 
 local handler = {}
 
@@ -191,56 +192,6 @@ function handler.init(env)
         end
     end
 
-    -- 检查碰撞
-    local function check_collision(x, y, width, height, region)
-        local minX = x
-        local maxX = x + width
-        local minY = y
-        local maxY = y + height
-        local TILE_SIZE = get_tile_size()
-
-        -- 1. 检查与现有建筑的碰撞
-        local s_buildings = m_sharedata.query("s_buildings")
-        for _, b in pairs(m_UserData.m_buildingsMap) do
-            if b.region == region then
-                local def = s_buildings[b.type]
-                if def then
-                    local bWidth = def.width * TILE_SIZE
-                    local bHeight = def.height * TILE_SIZE
-                    
-                    local bMinX = b.x - bWidth / 2
-                    local bMaxX = b.x + bWidth / 2
-                    local bMinY = b.y - bHeight / 2
-                    local bMaxY = b.y + bHeight / 2
-                    
-                    if (minX < bMaxX and maxX > bMinX and minY < bMaxY and maxY > bMinY) then
-                        skynet.error("Collision with building " .. b.id)
-                        return false, "collision_with_building"
-                    end
-                end
-            end
-        end
-
-        -- 2. 检查与现有矩形的碰撞
-        if m_UserData.m_rect_buildingsMap then
-            for _, r in pairs(m_UserData.m_rect_buildingsMap) do
-                if (r.region or 2) == region then
-                    local rMinX = r.x
-                    local rMaxX = r.x + r.width
-                    local rMinY = r.y
-                    local rMaxY = r.y + r.height
-                    
-                    if (minX < rMaxX and maxX > rMinX and minY < rMaxY and maxY > rMinY) then
-                        skynet.error("Collision with rect " .. r.id)
-                        return false, "collision_with_rect"
-                    end
-                end
-            end
-        end
-
-        return true
-    end
-
     -- 建造矩形并自动分配小建筑
     function m_REQUEST.build_rect(args)
         local user_id = env.envFuncGetUserId()
@@ -253,43 +204,118 @@ function handler.init(env)
         local region = args.region or 2
         local type = args.type or 1
 
-        if width <= 0 or height <= 0 or type <= 0 then
-            return { ok = false, error = "invalid_parameters" }
-        end
-
         -- 碰撞检测
-        local collision_ok, collision_error = check_collision(x, y, width, height, region)
+        local collision_ok, collision_error = collision_utils.check_collision(m_UserData, x, y, width, height, region)
         if not collision_ok then
-            return { ok = false, error = collision_error }
+            return { ok = false, error = "无法在此位置建造" }
         end
 
-        -- 插入主矩形
-        local new_rect, insert_error = insert_rect_building(db_pool_service, user_id, x, y, width, height, region, type)
-        if not new_rect then
-            return { ok = false, error = insert_error }
+        local wall_type = 3
+        local is_merged = false
+        local target_rect = nil
+        local old_rect_attrs = nil
+
+        -- 1. 尝试合并检测
+        if type == wall_type then
+            for _, rectBuilding in pairs(m_UserData.m_rect_buildingsMap) do
+                if rectBuilding.type == wall_type and (rectBuilding.region or 2) == region then
+                    local can_merge = false
+                    local temp_attrs = { x = rectBuilding.x, y = rectBuilding.y, width = rectBuilding.width, height = rectBuilding.height }
+
+                    if rectBuilding.width == width and rectBuilding.x == x then
+                        -- 垂直方向检查
+                        if rectBuilding.y + rectBuilding.height == y then
+                            -- 旧在下，新在上
+                            temp_attrs.height = rectBuilding.height + height
+                            can_merge = true
+                        elseif y + height == rectBuilding.y then
+                            -- 新在旧之前
+                            temp_attrs.y = y
+                            temp_attrs.height = rectBuilding.height + height
+                            can_merge = true
+                        end
+                    elseif rectBuilding.height == height and rectBuilding.y == y then
+                        -- 水平方向检查
+                        if rectBuilding.x + rectBuilding.width == x then
+                            -- 旧在新左边
+                            temp_attrs.width = rectBuilding.width + width
+                            can_merge = true
+                        elseif x + width == rectBuilding.x then
+                            -- 新在旧左边
+                            temp_attrs.x = x
+                            temp_attrs.width = rectBuilding.width + width
+                            can_merge = true
+                        end
+                    end
+
+                    if can_merge then
+                        is_merged = true
+                        target_rect = rectBuilding
+                        old_rect_attrs = { x = rectBuilding.x, y = rectBuilding.y, width = rectBuilding.width, height = rectBuilding.height }
+                        
+                        -- 应用修改 (Wrapper 会自动处理 DB 更新)
+                        rectBuilding.x = temp_attrs.x
+                        rectBuilding.y = temp_attrs.y
+                        rectBuilding.width = temp_attrs.width
+                        rectBuilding.height = temp_attrs.height
+                        break
+                    end
+                end
+            end
         end
 
-        -- 规划子建筑
+        local rect_id_for_sub = 0
+        local new_rect_obj = nil -- 用于返回给客户端
+
+        if is_merged then
+            rect_id_for_sub = target_rect.id
+        else
+            -- 2. 插入主矩形 (仅当未合并时)
+            local new_rect, insert_error = insert_rect_building(db_pool_service, user_id, x, y, width, height, region, type)
+            if not new_rect then
+                return { ok = false, error = insert_error }
+            end
+            rect_id_for_sub = new_rect.id
+            new_rect_obj = new_rect
+        end
+
+        -- 3. 规划子建筑
         local configs = get_rect_sub_configs(type)
         local layout = generate_sub_buildings_layout(width, height, configs)
         
-        -- 插入子建筑
-        local sub_buildings, sub_error = insert_sub_buildings(db_pool_service, user_id, new_rect.id, x, y, layout)
+        -- 4. 插入子建筑
+        local sub_buildings, sub_error = insert_sub_buildings(db_pool_service, user_id, rect_id_for_sub, x, y, layout)
         
         if not sub_buildings then
-            
-            -- 补救措施：删除 rect_id 关联的所有 sub
-            local clean_sql = string.format("DELETE FROM d_rect_building_sub WHERE rect_building_id=%d", new_rect.id)
-            skynet.call(db_pool_service, "lua", "execute", clean_sql)
-            
-            local clean_rect_sql = string.format("DELETE FROM d_rect_building WHERE id=%d", new_rect.id)
-            skynet.call(db_pool_service, "lua", "execute", clean_rect_sql)
+            if is_merged then
+                -- 回滚合并
+                target_rect.x = old_rect_attrs.x
+                target_rect.y = old_rect_attrs.y
+                target_rect.width = old_rect_attrs.width
+                target_rect.height = old_rect_attrs.height
+            else
+                -- 补救措施：删除 rect_id 关联的所有 sub (虽然插入失败应该没有sub，但为了保险)
+                local clean_sql = string.format("DELETE FROM d_rect_building_sub WHERE rect_building_id=%d", rect_id_for_sub)
+                skynet.call(db_pool_service, "lua", "execute", clean_sql)
+                
+                local clean_rect_sql = string.format("DELETE FROM d_rect_building WHERE id=%d", rect_id_for_sub)
+                skynet.call(db_pool_service, "lua", "execute", clean_rect_sql)
+            end
             
             return { ok = false, error = sub_error }
         end
-
-        -- 更新内存
-        update_memory_data(new_rect, sub_buildings, db_pool_service)
+        
+        -- 5. 更新内存
+        if is_merged then
+            if not m_UserData.m_rect_building_subMap then 
+                m_UserData.m_rect_building_subMap = {} 
+            end
+            for _, sub in ipairs(sub_buildings) do
+                m_UserData.m_rect_building_subMap[sub.id] = m_DataWrapper.new(db_pool_service, "d_rect_building_sub", "id", sub)
+            end
+        else
+            update_memory_data(new_rect_obj, sub_buildings, db_pool_service)
+        end
         
         -- 发送通知
         local request = env.envFuncGetRequest()
@@ -298,7 +324,7 @@ function handler.init(env)
         
         return { 
             ok = true, 
-            rect_building = new_rect
+            rect_building = is_merged and target_rect or new_rect_obj
         }
     end
 
@@ -310,51 +336,16 @@ function handler.init(env)
         local db_pool_service = env.envFuncGetDbPool()
 
         local rect = m_UserData.m_rect_buildingsMap[id]
-        if not rect then return { ok = false } end
+        if not rect then return { ok = false, error = "无此建筑" } end
 
         local width = rect.width
         local height = rect.height
         local region = rect.region or 2
 
-        -- 碰撞检测 (复用 check_collision, 但要排除自己)
-        local minX = x
-        local maxX = x + width
-        local minY = y
-        local maxY = y + height
-        local TILE_SIZE = get_tile_size()
-
-        -- Check buildings
-        local s_buildings = m_sharedata.query("s_buildings")
-        for _, b in pairs(m_UserData.m_buildingsMap) do
-            if b.region == region then
-                local def = s_buildings[b.type]
-                if def then
-                    local bWidth = def.width * TILE_SIZE
-                    local bHeight = def.height * TILE_SIZE
-                    local bMinX = b.x - bWidth / 2
-                    local bMaxX = b.x + bWidth / 2
-                    local bMinY = b.y - bHeight / 2
-                    local bMaxY = b.y + bHeight / 2
-                    if (minX < bMaxX and maxX > bMinX and minY < bMaxY and maxY > bMinY) then
-                        return { ok = false }
-                    end
-                end
-            end
-        end
-
-        -- Check rects (exclude self)
-        if m_UserData.m_rect_buildingsMap then
-            for _, r in pairs(m_UserData.m_rect_buildingsMap) do
-                if r.id ~= id and (r.region or 2) == region then
-                    local rMinX = r.x
-                    local rMaxX = r.x + r.width
-                    local rMinY = r.y
-                    local rMaxY = r.y + r.height
-                    if (minX < rMaxX and maxX > rMinX and minY < rMaxY and maxY > rMinY) then
-                        return { ok = false }
-                    end
-                end
-            end
+        -- 碰撞检测
+        local collision_ok, collision_error = collision_utils.check_collision(m_UserData, x, y, width, height, region, id)
+        if not collision_ok then
+            return { ok = false, error = "无法移动到此位置" }
         end
 
         -- 计算偏移量
@@ -376,13 +367,13 @@ function handler.init(env)
         end
         
         local r_rect_building_sub = {}
-        for _, sub in pairs(m_UserData.m_rect_building_subMap) do table.insert(r_rect_building_sub, sub:raw()) end
+        for _, sub in pairs(m_UserData.m_rect_building_subMap) do table.insert(r_rect_building_sub, sub) end
         
         -- 发送通知
         local request = env.envFuncGetRequest()
         local content = request("build_rect_sub", { rect_buildings_sub = r_rect_building_sub})
         m_send_package(content)
-        return { ok = true, rect_building = rect:raw() }
+        return { ok = true, rect_building = rect }
     end
 
     -- 删除矩形

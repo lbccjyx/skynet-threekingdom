@@ -1,6 +1,6 @@
 import { Game } from '@core/state.js';
 import { CRenderEngine } from '@render/render_engine.js';
-import { log } from '@utils';
+import { log , PopFloat} from '@utils';
 import { sendRequest } from '@api';
 import { TILE_SIZE, CITY_BOUNDARY } from '@config';
 import { updateGameView } from '@game/game.js';
@@ -99,7 +99,7 @@ export const BuildRect = {
         const height = maxY - minY;
 
         if (!this.IsRectPosUseful(minX, minY, width, height)) {
-            log("Cannot build outside city boundary!");
+            PopFloat("超过城市边缘 无法在此位置建造");
             this.stop();
             return;
         }
@@ -118,7 +118,16 @@ export const BuildRect = {
             if (res.ok) {
                 log("圈地成功!");
                 if (!Game.data.rect_buildings) Game.data.rect_buildings = [];
-                Game.data.rect_buildings.push(res.rect_building);
+                
+                // Check if it's a merge or new
+                const existingIndex = Game.data.rect_buildings.findIndex(r => r.id === res.rect_building.id);
+                if (existingIndex !== -1) {
+                    // Update existing (merged)
+                    Game.data.rect_buildings[existingIndex] = res.rect_building;
+                } else {
+                    // Add new
+                    Game.data.rect_buildings.push(res.rect_building);
+                }
                 
                 // Clear temporary rect
                 if (this.currentRect) {
@@ -137,7 +146,7 @@ export const BuildRect = {
                 
                 this.stop();
             } else {
-                log("圈地失败 (可能重叠)");
+                PopFloat(res.error);
                 this.stop();
             }
         });
@@ -281,6 +290,7 @@ export const BuildRect = {
 
         // Check Boundary
          if (!this.IsRectPosUseful(tlX, tlY, w, h)) {
+            PopFloat("超过城市边缘 无法在此位置建造");
             // Revert Position
             if (Game.dragState.originalX !== undefined) {
                 obj.position.set(Game.dragState.originalX, 0, Game.dragState.originalZ);
@@ -305,6 +315,7 @@ export const BuildRect = {
                 if (r) { r.x = res.rect_building.x; r.y = res.rect_building.y; }
                 updateGameView();
             } else {
+                PopFloat(res.error);
                 // Revert on server fail
                 if (Game.dragState.originalX !== undefined) {
                     obj.position.set(Game.dragState.originalX, 0, Game.dragState.originalZ);

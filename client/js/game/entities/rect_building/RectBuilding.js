@@ -62,8 +62,6 @@ export class RectBuilding extends Entity {
         CRenderEngine.worldGroup.add(this.mesh);
         CRenderEngine.objects[this.getRenderId()] = this.mesh;
 
-        const WALL_TYPE = 3;
-
         subs.forEach(sub => {
             const buildDef = window.BUILDING_DEFINITIONS[sub.building_type];
             if (!buildDef) 
@@ -83,9 +81,7 @@ export class RectBuilding extends Entity {
             const localX = sub.x - centerX + TILE_SIZE / 2;
             const localY = sub.y - centerY + TILE_SIZE / 2;
 
-            if (this.data.type === WALL_TYPE && this.wallMap) {
-                //this.mesh.position.y = -80;
-                log("sub.x sub.y localX localY: " + sub.x + " " + sub.y + " " + localX + " " + localY);
+            if (this.data.type === ERB_TYPE.WALL && this.wallMap) {
                 CSubBuildingRender.AddWall(
                     this.mesh,
                     this.wallMap,
@@ -102,7 +98,8 @@ export class RectBuilding extends Entity {
                     localY,
                     glbPath,
                     buildDef.width,
-                    buildDef.height
+                    buildDef.height,
+                    this.data.type
                 );
             }
         });

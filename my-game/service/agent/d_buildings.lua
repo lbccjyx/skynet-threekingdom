@@ -1,4 +1,5 @@
 local skynet = require "skynet"
+local collision_utils = require "agent.collision_utils"
 
 local handler = {}
 
@@ -10,6 +11,11 @@ function handler.init(env)
     local m_save_items = env.envSaveItems
     local m_send_package = env.envSendPackage
     
+    -- s_building下的width和height不需要换算nDetailTimes
+    local function get_tile_size()        
+        return tonumber(skynet.getenv("TILE_SIZE")) or 30 
+    end
+
     -- 建造建筑
     function m_REQUEST.build(args)
         local user_id = env.envFuncGetUserId()
@@ -29,6 +35,18 @@ function handler.init(env)
         
         if not building_conf then
             return { ok = false }
+        end
+
+        local TILE_SIZE = get_tile_size()
+        local width = building_conf.width * TILE_SIZE
+        local height = building_conf.height * TILE_SIZE
+        local minX = x - width / 2
+        local minY = y - height / 2
+
+        -- 碰撞检测
+        local collision_ok, collision_error = collision_utils.check_collision(m_UserData, minX, minY, width, height, region)
+        if not collision_ok then
+            return { ok = false, error = "无法在此位置建造" }
         end
     
         local costs = {}
@@ -93,12 +111,39 @@ function handler.init(env)
     
         local building = m_UserData.m_buildingsMap[id]
         if building then
+            local s_buildings = m_sharedata.query("s_buildings")
+            local building_conf = s_buildings[building.type]
+            if not building_conf then return { ok = false } end
+
+            local region = building.region or 1
+            local TILE_SIZE = get_tile_size()
+            local width = building_conf.width * TILE_SIZE
+            local height = building_conf.height * TILE_SIZE
+            local minX = new_x - width / 2
+            local minY = new_y - height / 2
+
+            -- 碰撞检测 (先移除自己再检测)
+            local old_x, old_y = building.x, building.y
+            
+            -- 临时移除以便检测
+            -- 注意：因为 collision_utils 遍历的是 m_buildingsMap，我们需要一种方式排除自己
+            -- 简单的方法是把自己的坐标暂时移到无限远，或者 collision_utils 增加 exclude_id 参数
+            -- 为了通用性，这里选择修改 collision_utils 增加 exclude_id 参数更合适，
+            -- 但鉴于 collision_utils 刚写好，这里先采用修改 m_buildingsMap 的临时方案，或者让 check_collision 支持 exclude_id。
+            
+            -- 更好的方案：更新 collision_utils 支持 exclude_id
+            -- 这里先假设 collision_utils 已经更新了（下一步马上更新它）
+             local collision_ok, collision_error = collision_utils.check_collision(m_UserData, minX, minY, width, height, region, id)
+             if not collision_ok then
+                 return { ok = false, error = "无法移动到此位置" }
+             end
+
             building.x = new_x
             building.y = new_y
             
-            return { ok = true, building = building:raw() }
+            return { ok = true, building = building}
         end
-        return { ok = false }
+        return { ok = false, error = "无此建筑" }
     end
 
 end

@@ -1,6 +1,6 @@
 import { Game } from '../core/state.js';
 import { sendRequest } from '../core/api.js';
-import { log } from '@utils';
+import { log, PopFloat } from '@utils';
 import { updateGameView } from '@game/game.js';
 import { TextureGhostManager } from '@game/managers/TextureGhostManager.js';
 import { CITY_BOUNDARY } from '@config';
@@ -69,13 +69,12 @@ export const BuildingInput = {
             region: region
         }, (res) => {
             if (res.ok) {
-                log("Building started!");
                 if (res.building) {
                     Game.data.buildings.push(res.building);
                     updateGameView();
                 }
             } else {
-                log("Build failed");
+                PopFloat(res.error);
             }
         });
 
@@ -197,6 +196,7 @@ export const BuildingInput = {
                 if (b) { b.x = res.building.x; b.y = res.building.y; }
                 updateGameView();
             } else {
+                PopFloat(res.error);
                 updateGameView();
             }
         });
