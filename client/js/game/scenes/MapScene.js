@@ -1,8 +1,8 @@
 import { BaseScene } from './BaseScene.js';
 import { Game } from '@core/state.js';
-import { Building } from '@entities/Building.js';
-import { RectBuilding } from '@entities/rect_building/RectBuilding.js';
-import { General } from '@entities/General.js';
+import { CBuilding } from '@entities/building/d_building.js';
+import { CRectBuilding } from '@entities/rect_building/d_rect_building.js';
+import { CGeneral } from '@entities/person/general/d_general.js';
 import { TILE_SIZE } from '@config';
 import { UI } from '@ui/elements.js';
 
@@ -42,7 +42,7 @@ export class MapScene extends BaseScene {
         // Render Generals
         if (Game.data.generals) {
             Game.data.generals.forEach(g => {
-                this.addEntity(new General(g));
+                this.addEntity(new CGeneral(g));
             });
         }
 
@@ -51,7 +51,7 @@ export class MapScene extends BaseScene {
             Game.data.buildings.forEach(b => {
                 const region = b.region !== undefined ? b.region : 1;
                 if (region !== 2) return;
-                this.addEntity(new Building(b));
+                this.addEntity(new CBuilding(b));
             });
         }
 
@@ -60,7 +60,7 @@ export class MapScene extends BaseScene {
             Game.data.rect_buildings.forEach(r => {
                 const region = r.region !== undefined ? r.region : 2; 
                 if (region !== 2) return;
-                this.addEntity(new RectBuilding(r, wallMap));
+                this.addEntity(new CRectBuilding(r, wallMap));
             });
         }
     }

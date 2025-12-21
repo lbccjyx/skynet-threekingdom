@@ -6,7 +6,7 @@ import { log } from '@utils';
 import { CSubBuildingRender } from '@render/render_sub_building.js';
 
 // 此类主要用于渲染圈地，包括渲染圈地、渲染子建筑、渲染城墙等操作
-export class RectBuilding extends Entity {
+export class CRectBuilding extends Entity {
     constructor(data, wallMap = null) {
         // data是proto消息 .RectBuilding
         super(data);

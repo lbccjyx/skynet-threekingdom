@@ -63,8 +63,26 @@ skynet.start(function()
     end
     sharedata.new("s_house_population", type_house_populations)
 
+    -- Load s_person_age
+    local person_age = {}
+    local res_person_age = db:query("SELECT * FROM s_person_age")
+    if res_person_age then
+        for _, row in ipairs(res_person_age) do
+            person_age[row.id] = row
+        end
+    end
+    sharedata.new("s_person_age", person_age)
 
-
+    -- Load s_person_character_attr
+    local person_character_attr = {}
+    local res_person_character_attr = db:query("SELECT * FROM s_person_character_attr")
+    if res_person_character_attr then
+        for _, row in ipairs(res_person_character_attr) do
+            person_character_attr[row.id] = row
+        end
+    end
+    sharedata.new("s_person_character_attr", person_character_attr)
+    
     db:disconnect()
     skynet.error("Static data loaded and shared.")
     skynet.exit()

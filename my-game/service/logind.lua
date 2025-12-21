@@ -31,6 +31,7 @@ local function response(id, code, body)
     end
 end
 
+-- 此函数处理玩家动态数据
 local function handle_login(username, password)
     if not db then
         db = connect_db()

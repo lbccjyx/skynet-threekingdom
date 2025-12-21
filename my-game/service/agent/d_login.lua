@@ -1,4 +1,6 @@
 local skynet = require "skynet"
+require "define_enum"
+local PersonHandler = require "agent.d_person"
 
 local handler = {}
 
@@ -35,6 +37,11 @@ function handler.init(env)
         local r_rect_building_sub = {}
         if UserData.m_rect_building_subMap then
             for id, v in pairs(UserData.m_rect_building_subMap) do table.insert(r_rect_building_sub, v:raw()) end
+        end
+
+        if(UserData.m_personMap == nil or MapIsEmpty(UserData.m_personMap)) then
+            local person_id = PersonHandler.CreatePerson()
+            PersonHandler.CreatePersonCharacter(person_id, 3)
         end
         
         return {

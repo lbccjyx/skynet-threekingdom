@@ -5,8 +5,8 @@ import { log } from '@core/utils.js';
 import { switchView, updateGameView } from '../game/game.js';
 import { TextureGhostManager } from '../game/managers/TextureGhostManager.js';
 import { CRenderEngine } from '@render/render_engine.js';
-import { BuildRect } from '@entities/rect_building/build_rect.js';
-import { BuildingInput } from './d_building_input.js';
+import { RectBuildingInput } from '@entities/rect_building/d_rect_building_input.js';
+import { BuildingInput } from '@entities/building/d_building_input.js';
 import { GameToolbar } from '../ui/game_toolbar.js';
 import { CRenderGrid } from '@render/render_grid.js';
 import { CRenderInput } from '@render/render_input.js';
@@ -34,18 +34,18 @@ export function setupContextMenus() {
     container.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         
-        // 1. Cancel Placement / BuildRect
+        // 1. Cancel Placement / RectBuildingInput
         if (Game.placementState.active) {
             Game.placementState.active = false;
             Game.placementState.def = null;
-            CRenderGrid.setVisibility(false);
+            CRenderGrid.SetVisibility(false);
             TextureGhostManager.RemoveGhost();
             log("取消建造");
             return;
         }
 
-        if (BuildRect.active) {
-            BuildRect.stop();
+        if (RectBuildingInput.active) {
+            RectBuildingInput.stop();
             return;
         }
         
@@ -97,8 +97,8 @@ export function initInteractionListeners() {
 
     // 鼠标移动 (悬停, 拖拽, 平移)
     container.addEventListener('mousemove', (e) => {
-        if (BuildRect.active) {
-            BuildRect.onMouseMove(e);
+        if (RectBuildingInput.active) {
+            RectBuildingInput.onMouseMove(e);
             return;
         }
 
@@ -145,7 +145,7 @@ export function initInteractionListeners() {
 
             // 鼠标拖拽起始触发点。根据不同的type 调用不同的处理函数
             if (Game.dragState.type === 'rect_building') {
-                BuildRect.handleDragMove(id, newX, newY);
+                RectBuildingInput.handleDragMove(id, newX, newY);
                  return;
             } else if (Game.dragState.type === 'building') {
                  BuildingInput.handleDragMove(id, newX, newY);
@@ -230,8 +230,8 @@ export function initInteractionListeners() {
              return;
         }
 
-        if (BuildRect.active) {
-            BuildRect.onMouseDown(e);
+        if (RectBuildingInput.active) {
+            RectBuildingInput.onMouseDown(e);
             return;
         }
 
@@ -274,11 +274,11 @@ export function initInteractionListeners() {
                  Game.dragState.offsetX = worldPos.x - objGameX;
                  Game.dragState.offsetY = worldPos.y - objGameY;
                  
-                 CRenderGrid.setVisibility(true);
+                 CRenderGrid.SetVisibility(true);
                  log(`Started dragging general ${id}`);
                  
             } else if (isRect) {
-                BuildRect.handleDragStart(id, obj, worldPos);
+                RectBuildingInput.handleDragStart(id, obj, worldPos);
             } else {
                  BuildingInput.handleDragStart(id, obj, worldPos);
             }
@@ -306,7 +306,7 @@ export function initInteractionListeners() {
             if (obj) {
                 // Handle Rect Dragging Special Logic (Center vs TopLeft)
                 if (type === 'rect_building') {
-                    BuildRect.handleDragEnd(id, obj);
+                    RectBuildingInput.handleDragEnd(id, obj);
                      return;
                 }
 
@@ -328,7 +328,7 @@ export function initInteractionListeners() {
                           Game.dragState.isDragging = false;
                           Game.dragState.id = null;
                           Game.dragState.type = null;
-                          CRenderGrid.setVisibility(false);
+                          CRenderGrid.SetVisibility(false);
                           return;
                      }
                 }
@@ -350,7 +350,7 @@ export function initInteractionListeners() {
                      Game.dragState.isDragging = false;
                      Game.dragState.id = null;
                      Game.dragState.type = null;
-                     CRenderGrid.setVisibility(false);
+                     CRenderGrid.SetVisibility(false);
                 } else {
                     BuildingInput.handleDragEnd(id, obj);
                 }
@@ -359,14 +359,14 @@ export function initInteractionListeners() {
                 Game.dragState.isDragging = false;
                 Game.dragState.id = null;
                 Game.dragState.type = null;
-                CRenderGrid.setVisibility(false);
+                CRenderGrid.SetVisibility(false);
             }
         }
     };
 
     container.addEventListener('mouseup', (e) => {
-        if (BuildRect.active) {
-            BuildRect.onMouseUp(e);
+        if (RectBuildingInput.active) {
+            RectBuildingInput.onMouseUp(e);
             return;
         }
         endInteraction(e);

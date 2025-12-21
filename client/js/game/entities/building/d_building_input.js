@@ -1,5 +1,5 @@
-import { Game } from '../core/state.js';
-import { sendRequest } from '../core/api.js';
+import { Game } from '../../../core/state.js';
+import { sendRequest } from '../../../core/api.js';
 import { log, PopFloat } from '@utils';
 import { updateGameView } from '@game/game.js';
 import { TextureGhostManager } from '@game/managers/TextureGhostManager.js';

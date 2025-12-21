@@ -34,7 +34,23 @@ function handler.init(env)
         local building_conf = s_buildings[type]
         
         if not building_conf then
-            return { ok = false }
+            return { ok = false, error = "无此建筑" }
+        end
+
+        if building_conf.is_sub_building == 1 then
+            return { ok = false, error = "无法直接建筑子建筑" }
+        end
+
+        if building_conf.limit_num > 0 then
+            local building_count = 0
+            for _, b in pairs(m_UserData.m_buildingsMap) do
+                if b.type == type then
+                    building_count = building_count + 1
+                end
+            end
+            if building_count >= building_conf.limit_num then
+                return { ok = false, error = "建筑数量已达上限" }
+            end
         end
 
         local TILE_SIZE = get_tile_size()
@@ -57,7 +73,7 @@ function handler.init(env)
         for _, c in ipairs(costs) do
             local current = m_UserData.m_itemsMap[c.id] or 0
             if current < c.num then
-                return { ok = false }
+                return { ok = false, error = "资源不足" }
             end
         end
     
@@ -79,7 +95,7 @@ function handler.init(env)
             user_id, type, x, y, now, region)
         local res = skynet.call(db_pool_service, "lua", "insert", sql)
         if not res.ok then
-            return { ok = false }
+            return { ok = false, error = "建造失败" }
         end
 
         local new_building_data = {
@@ -113,7 +129,7 @@ function handler.init(env)
         if building then
             local s_buildings = m_sharedata.query("s_buildings")
             local building_conf = s_buildings[building.type]
-            if not building_conf then return { ok = false } end
+            if not building_conf then return { ok = false, error = "无此建筑" } end
 
             local region = building.region or 1
             local TILE_SIZE = get_tile_size()
@@ -125,14 +141,6 @@ function handler.init(env)
             -- 碰撞检测 (先移除自己再检测)
             local old_x, old_y = building.x, building.y
             
-            -- 临时移除以便检测
-            -- 注意：因为 collision_utils 遍历的是 m_buildingsMap，我们需要一种方式排除自己
-            -- 简单的方法是把自己的坐标暂时移到无限远，或者 collision_utils 增加 exclude_id 参数
-            -- 为了通用性，这里选择修改 collision_utils 增加 exclude_id 参数更合适，
-            -- 但鉴于 collision_utils 刚写好，这里先采用修改 m_buildingsMap 的临时方案，或者让 check_collision 支持 exclude_id。
-            
-            -- 更好的方案：更新 collision_utils 支持 exclude_id
-            -- 这里先假设 collision_utils 已经更新了（下一步马上更新它）
              local collision_ok, collision_error = collision_utils.check_collision(m_UserData, minX, minY, width, height, region, id)
              if not collision_ok then
                  return { ok = false, error = "无法移动到此位置" }

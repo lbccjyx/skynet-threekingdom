@@ -1,10 +1,10 @@
-import { Entity } from './Entity.js';
+import { Entity } from '../Entity.js';
 import { TILE_SIZE } from '@config';
 import { Game } from '@core/state.js';
 import { CRenderTexture } from '@render/render_texture.js';
 import { CRenderInput } from '@render/render_input.js';
 
-export class Building extends Entity {
+export class CBuilding extends Entity {
     constructor(data) {
         super(data);
         this.type = 'building';

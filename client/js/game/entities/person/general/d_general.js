@@ -1,7 +1,7 @@
-import { Entity } from './Entity.js';
+import { CPerson } from '../person.js';
 import { CRenderTexture } from '@render/render_texture.js';
 
-export class General extends Entity {
+export class CGeneral extends CPerson {
     constructor(data) {
         super(data);
         this.type = 'general';

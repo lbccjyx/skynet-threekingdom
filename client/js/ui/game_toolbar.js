@@ -1,5 +1,5 @@
 import { Game } from '../core/state.js';
-import { BuildRect } from '@entities/rect_building/build_rect.js';
+import { RectBuildingInput } from '@entities/rect_building/d_rect_building_input.js';
 import { CRenderInput } from '@render/render_input.js';
 import { log } from '../core/utils.js';
 import { updateGameView } from '../game/game.js';
@@ -150,8 +150,7 @@ export const GameToolbar = {
         this.closeAllMenus();
         log(`Selected Zoning: ${def.name}`);
         
-        // Start BuildRect with type
-        BuildRect.start(def);
+        RectBuildingInput.start(def);
     },
 
     toggleDeleteMode: function() {
@@ -170,8 +169,8 @@ export const GameToolbar = {
                 Game.placementState.active = false;
                 TextureGhostManager.RemoveGhost();
             }
-            if (BuildRect.active) {
-                BuildRect.stop();
+            if (RectBuildingInput.active) {
+                RectBuildingInput.stop();
             }
             CRenderGrid.SetVisibility(false);
 

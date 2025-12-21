@@ -9,7 +9,7 @@ import { CRenderGrid } from '@render/render_grid.js';
 import { CRenderInput } from '@render/render_input.js';
 
 // 圈地从无到有的放置过程  圈地的拖拽移动
-export const BuildRect = {
+export const RectBuildingInput = {
     active: false,
     startPos: null, // {x, y}
     currentRect: null, // THREE.Mesh

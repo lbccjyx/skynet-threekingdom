@@ -36,7 +36,7 @@
     region 6 : integer
 }
 
-# Client to Server
+# Client to Server  登录下发玩家动态数据
 login 1 {
     request {
         token 0 : string

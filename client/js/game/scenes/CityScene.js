@@ -1,11 +1,13 @@
 import { BaseScene } from './BaseScene.js';
 import { Game } from '@core/state.js';
-import { Building } from '../entities/Building.js';
-import { RectBuilding } from '../entities/rect_building/RectBuilding.js';
+import { CBuilding } from '../entities/building/d_building.js';
+import { CRectBuilding } from '../entities/rect_building/d_rect_building.js';
 import { TILE_SIZE } from '@config';
 import { UI } from '@ui/elements.js';
 import { CRenderTexture } from '@render/render_texture.js';
 import { log } from '../../core/utils.js';
+import { CGeneral } from '@entities/person/general/d_general.js';
+
 
 export class CityScene extends BaseScene {
     constructor() {
@@ -53,7 +55,7 @@ export class CityScene extends BaseScene {
             Game.data.buildings.forEach(b => {
                 const region = b.region !== undefined ? b.region : 1;
                 if (region !== 1) return; 
-                this.addEntity(new Building(b));
+                this.addEntity(new CBuilding(b));
             });
         }
 
@@ -64,7 +66,14 @@ export class CityScene extends BaseScene {
                 if (region !== 1) return;
                 // 父类 BaseScene.addentity的时候会触发到 entity.mount(); 又因为 Entity.mount()  会调用 Entity.createMesh();
                 //  所以相当于调用了RectBuilding.createMesh 也就是说每个rect_building都会调用一次 createMesh方法
-                this.addEntity(new RectBuilding(r, wallMap));
+                this.addEntity(new CRectBuilding(r, wallMap));
+            });
+        }
+
+        // Render Generals
+        if (Game.data.generals) {
+            Game.data.generals.forEach(g => {
+                this.addEntity(new CGeneral(g));
             });
         }
     }

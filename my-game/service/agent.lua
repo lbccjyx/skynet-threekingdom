@@ -4,6 +4,7 @@ local sprotoparser = require "sprotoparser"
 local sharedata = require "skynet.sharedata"
 require "define_enum"
 local DataWrapper = require "data_wrapper"
+local LoadUserData = require "db.load_user_data"
 
 
 local m_gate
@@ -12,17 +13,9 @@ local m_user_id
 local m_host
 local m_request
 local m_db_pool_service  -- 数据库连接池服务地址
+local env -- Forward declaration
 
-
-local UserData = {
-    m_rUser = {},
-    m_rCity = {},
-    m_itemsMap = {},
-    m_generalsMap = {},
-    m_buildingsMap = {},
-    m_rect_buildingsMap = {},
-    m_rect_building_subMap = {},
-}
+local UserData = LoadUserData.new_user_data()
 
 local CMD = {}
 
@@ -72,100 +65,8 @@ local function safe_execute(sql, params)
     return true
 end
 
--- 玩家动态数据加载 每次登录的时候加载一次
-local function load_data()
-    skynet.error("玩家动态数据加载")
-
-    local res = safe_query("SELECT * FROM d_users WHERE id="..m_user_id)
-    UserData.m_rUser = DataWrapper.new( m_db_pool_service, "d_users", "id", res[1])
-
-    res = safe_query("SELECT * FROM d_cities WHERE user_id="..m_user_id)
-    local city_data = res[1] or { id=0, name="New City", level=1 }
-    UserData.m_rCity = DataWrapper.new( m_db_pool_service, "d_cities", "id", city_data)
-    
-    res = safe_query("SELECT * FROM d_items WHERE user_id="..m_user_id)
-    UserData.m_itemsMap = {}
-    if res and #res > 0 then
-        for _, row in ipairs(res) do
-            UserData.m_itemsMap[row.item_id] = row.amount
-        end
-    else
-         -- Should have been created by login, but fallback
-         for i=1,5 do UserData.m_itemsMap[i] = 0 end
-    end
-    
-    res = safe_query("SELECT * FROM d_generals WHERE user_id="..m_user_id)
-    UserData.m_generalsMap = {}
-    if res then
-        for _, row in ipairs(res) do
-            UserData.m_generalsMap[row.id] = DataWrapper.new( m_db_pool_service, "d_generals", "id", row)
-        end
-    end
-    
-    res = safe_query("SELECT * FROM d_buildings WHERE user_id="..m_user_id)
-    UserData.m_buildingsMap = {}
-    if res then
-        for _, row in ipairs(res) do
-            UserData.m_buildingsMap[row.id] = DataWrapper.new( m_db_pool_service, "d_buildings", "id", row)
-        end
-    end
-
-    res = safe_query("SELECT * FROM d_rect_building WHERE user_id="..m_user_id)
-    UserData.m_rect_buildingsMap = {}
-    if res then
-        for _, row in ipairs(res) do
-            UserData.m_rect_buildingsMap[row.id] = DataWrapper.new( m_db_pool_service, "d_rect_building", "id", row)
-        end
-    end
-
-    res = safe_query("SELECT * FROM d_rect_building_sub WHERE user_id="..m_user_id)
-    UserData.m_rect_building_subMap = {}
-    if res then
-        for _, row in ipairs(res) do
-            UserData.m_rect_building_subMap[row.id] = DataWrapper.new( m_db_pool_service, "d_rect_building_sub", "id", row)
-        end
-    end
-end
-
 local function save_items()
-    for id, amount in pairs(UserData.m_itemsMap) do
-        -- optimize: prepare statement or batch if possible, but simple update loop is fine for now
-        local sql = string.format("UPDATE d_items SET amount=%d WHERE user_id=%d AND item_id=%d",
-            amount, m_user_id, id)
-        safe_execute(sql)
-    end
-end
-
--- 如果玩家脏数据没有保存 很可能在这里没写对应逻辑
-local function save_all_data()
-    if UserData.m_rUser and UserData.m_rUser.save then UserData.m_rUser:save() end
-    if UserData.m_rCity and UserData.m_rCity.save then UserData.m_rCity:save() end
-    
-    if UserData.m_generalsMap then
-        for _, v in pairs(UserData.m_generalsMap) do
-            v:save()
-        end
-    end
-    
-    if UserData.m_buildingsMap then
-        for _, v in pairs(UserData.m_buildingsMap) do
-            v:save()
-        end
-    end
-    
-    if UserData.m_rect_buildingsMap then
-        for _, v in pairs(UserData.m_rect_buildingsMap) do
-            v:save()
-        end
-    end
-
-    if UserData.m_rect_building_subMap then
-        for _, v in pairs(UserData.m_rect_building_subMap) do
-            v:save()
-        end
-    end
-    
-    save_items() -- Items still use old method for now as they are a map
+    LoadUserData.save_items()
 end
 
 local function growth_loop()
@@ -177,7 +78,7 @@ local function growth_loop()
             UserData.m_itemsMap[S_ITEM_TYPE.SIT_WOOD] = (UserData.m_itemsMap[S_ITEM_TYPE.SIT_WOOD] or 0) + 10
             UserData.m_itemsMap[S_ITEM_TYPE.SIT_STONE] = (UserData.m_itemsMap[S_ITEM_TYPE.SIT_STONE] or 0) + 10
 
-            save_all_data() -- Periodically save everything
+            LoadUserData.save_all_data()
             
             local list = {}
             for id, amount in pairs(UserData.m_itemsMap) do
@@ -193,7 +94,7 @@ end
 local REQUEST = {}
 
 -- Load logic handlers
-local env = {
+env = {
     envREQUEST = REQUEST,
     envUserData = UserData,
     envSharedata = sharedata,
@@ -201,15 +102,18 @@ local env = {
     envSkynet = skynet,
     envSaveItems = save_items,
     envSendPackage = send_package,
+    envSafeQuery = safe_query,
+    envSafeExecute = safe_execute,
     envFuncGetUserId = function() return m_user_id end,
-    envFuncGetDbPool = function() return m_db_pool_service end,
+    envFuncGetDbPool = get_db_pool,
     envFuncGetRequest = function() return m_request end,
 }
 
 require("agent.d_login").init(env)
-require("agent.general_handler").init(env)
+require("agent.d_general").init(env)
 require("agent.d_buildings").init(env)
 require("agent.d_rect_buildings").init(env)
+require("agent.d_person").init(env)
 
 local function dispatch(type, name, args, response)
     if type == "REQUEST" then
@@ -230,7 +134,8 @@ function CMD.start(conf)
     m_user_id = conf.user_id
     
     load_proto()
-    load_data()
+    LoadUserData.init(env)
+    LoadUserData.load_user_data()
     
     skynet.fork(growth_loop)
 end
@@ -243,7 +148,7 @@ function CMD.client(msg)
 end
 
 function CMD.disconnect()
-    save_all_data() -- Save on disconnect
+    LoadUserData.save_all_data() -- Save on disconnect
     skynet.exit()
 end
 

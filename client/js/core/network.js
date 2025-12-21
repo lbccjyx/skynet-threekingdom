@@ -27,7 +27,7 @@ export function connectWS() {
             // Use a custom replacer for BigInt
             const replacer = (key, value) =>
                 typeof value === 'bigint' ? value.toString() : value;
-            log("Game Login Response: " + JSON.stringify(res, replacer));
+            // log("Game Login Response: " + JSON.stringify(res, replacer));
             updateGameState(res);
             
             // Start heartbeat
