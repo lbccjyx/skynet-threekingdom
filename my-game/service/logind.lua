@@ -53,23 +53,6 @@ local function handle_login(username, password)
         end
         local uid = res.insert_id
         
-        -- Create City
-        db:query(string.format("INSERT INTO d_cities (user_id, name) VALUES (%d, 'MyCity')", uid))
-        -- Create Items (Resources)
-        -- 1:Gold, 2:Wood, 3:Stone, 4:Food, 5:Population
-        local initial_items = {
-            {id=1, amount=100},
-            {id=2, amount=100},
-            {id=3, amount=100},
-            {id=4, amount=100},
-            {id=5, amount=10}
-        }
-        for _, item in ipairs(initial_items) do
-            db:query(string.format("INSERT INTO d_items (user_id, item_id, amount) VALUES (%d, %d, %d)", uid, item.id, item.amount))
-        end
-        -- Create General
-        db:query(string.format("INSERT INTO d_generals (user_id, name, x, y) VALUES (%d, 'General', 100, 100)", uid))
-        
         user = { id = uid, username = username }
     else
         user = res[1]

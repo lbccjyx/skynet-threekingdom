@@ -5,7 +5,7 @@ local sharedata = require "skynet.sharedata"
 require "define_enum"
 local DataWrapper = require "data_wrapper"
 local LoadUserData = require "db.load_user_data"
-
+local PersonHandler = require "agent.d_person"
 
 local m_gate
 local m_client_fd
@@ -128,6 +128,30 @@ local function dispatch(type, name, args, response)
     end
 end
 
+local function on_user_login()
+    -- 首次登录创建数据
+    if not UserData.m_rCity then
+        -- Create City
+        safe_execute(string.format("INSERT INTO d_cities (user_id, name) VALUES (%d, 'MyCity')", m_user_id))
+        -- Create Items (Resources)
+        -- 1:Gold, 2:Wood, 3:Stone, 4:Food, 5:Population
+        local initial_items = {
+            {id=1, amount=100},
+            {id=2, amount=100},
+            {id=3, amount=100},
+            {id=4, amount=100},
+            {id=5, amount=10}
+        }
+        for _, item in ipairs(initial_items) do
+            safe_execute("INSERT INTO d_items (user_id, item_id, amount) VALUES (%d, %d, %d)", m_user_id, item.id, item.amount)
+        end
+        -- Create General
+        safe_execute("INSERT INTO d_generals (user_id, name, x, y) VALUES (%d, 'General', 100, 100)", m_user_id)
+    end
+
+    PersonHandler.OnUserLogin()
+end
+
 function CMD.start(conf)
     m_gate = conf.gate
     m_client_fd = conf.client
@@ -136,7 +160,7 @@ function CMD.start(conf)
     load_proto()
     LoadUserData.init(env)
     LoadUserData.load_user_data()
-    
+    on_user_login()
     skynet.fork(growth_loop)
 end
 
@@ -148,6 +172,8 @@ function CMD.client(msg)
 end
 
 function CMD.disconnect()
+    -- 玩家登出时序有要求。最后运行 save_all_data
+    PersonHandler.OnUserLogout()
     LoadUserData.save_all_data() -- Save on disconnect
     skynet.exit()
 end

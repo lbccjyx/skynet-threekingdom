@@ -41,7 +41,7 @@ function handler.init(env)
 
         if(UserData.m_personMap == nil or MapIsEmpty(UserData.m_personMap)) then
             local person_id = PersonHandler.CreatePerson()
-            PersonHandler.CreatePersonCharacter(person_id, 3)
+            PersonHandler.CreatePersonCharacter(person_id)
         end
         
         return {

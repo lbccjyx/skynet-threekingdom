@@ -43,3 +43,5 @@ PERSON_CHARACTER_TYPE = {
 
     _PAT_END = 13
 }
+
+NORMAL_CHARACTER = 1  -- 普通性格

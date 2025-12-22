@@ -21,17 +21,6 @@ function handle.handshake(id, header, url)
         if user_id then
             skynet.error("ws login user:", user_id)
 
--- 测试数据（参考）：
--- 5000个agent服务：
--- 启动时间：~3-5秒
--- 内存占用：~1GB
--- 消息延迟：增加 0.1-0.5ms（因调度开销）
-
--- 10000个agent服务：
--- 可能出现的问题：
--- 1. 服务创建失败（内存不足）
--- 2. 消息调度延迟明显
--- 3. 垃圾回收压力大
             local agent = skynet.newservice("agent")
             skynet.call(agent, "lua", "start", { gate = skynet.self(), client = id, user_id = user_id })
             agents[id] = agent
