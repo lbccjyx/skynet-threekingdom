@@ -196,7 +196,7 @@ function handler.init(env)
                     v.age = v.age + 1
                     handler.OnPersonAgeUp(v)
                     -- 年龄增加
-                    if s_person_age[v.age] == 0 then
+                    if s_person_age[v.age] == nil or s_person_age[v.age] == 0 then
                         v.is_adult = 1
                     else
                         -- 设置下次年龄增加时间

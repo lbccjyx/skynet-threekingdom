@@ -5,6 +5,15 @@ description: 服务端说明
 ## 游戏服务端目录
 my-game/*
 
+## 服务端简单介绍
+玩家通过 ws_gate的http验证后， 会给每个玩家分配 skynet.newservice("agent") 
+然后在agent.lua去实现玩家对象 包括登录登出
+通过 my-game/service/db/load_user_data.lua 去加载玩家数据
+通过 my-game/service/db/mysql_pool.lua去实现数据库连接池
+最后玩家具体业务在 service/agent/* 中
+与客户端通过websocket的sproto建立连接 sproto路径在 client/game.sproto
+理论上都会调用到agent函数： skynet.send(agent, "lua", "client", msg)
+
 ## 启动服务
 ./skynet my-game/config
 python3 client/start_server.py 
